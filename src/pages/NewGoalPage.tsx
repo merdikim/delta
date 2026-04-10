@@ -7,157 +7,118 @@ import {
   CardHeader,
   CardTitle,
 } from '#/components/ui/card'
-import { Building2, Coins, Landmark, PiggyBank, TrendingUp } from 'lucide-react'
-
-const bankRates = [
-  {
-    bank: 'Nova Bank',
-    rate: '11.4%',
-    term: '12-month savings lock',
-    accent: 'from-emerald-500/20 to-teal-500/10',
-    badge: 'Best return',
-  },
-  {
-    bank: 'Crest Microfinance',
-    rate: '9.8%',
-    term: 'Flexible monthly top-ups',
-    accent: 'from-sky-500/20 to-cyan-500/10',
-    badge: 'Most flexible',
-  },
-  {
-    bank: 'Harbor Capital',
-    rate: '8.6%',
-    term: 'Quarterly interest payout',
-    accent: 'from-amber-500/20 to-orange-500/10',
-    badge: 'Stable option',
-  },
-]
+import {
+  earnVaultsQueryOptions,
+} from '#/integrations/lifi/earn'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+import { Coins, Landmark, TrendingUp } from 'lucide-react'
+import type { EarnVault } from '#/types'
+import { formatCompactUsd, formatPercent, formatUsd } from '#/utils'
 
 const NewGoalPage = () => {
+  const { data: vaults = [] } = useSuspenseQuery<EarnVault[]>(
+    earnVaultsQueryOptions(),
+  )
+  const [monthlyAmount, setMonthlyAmount] = useState('500')
+  const [goalAmount, setGoalAmount] = useState('20000')
+  const [selectedVaultIndex, setSelectedVaultIndex] = useState(0)
+
+  const topVault = vaults[0]
+  const selectedVault = vaults[selectedVaultIndex] ?? topVault
+  const monthlyContribution = Number(monthlyAmount) || 0
+  const targetAmount = Number(goalAmount) || 0
+  const selectedApy = selectedVault?.analytics.apy.total ?? 0
+  const monthlyRate = selectedApy / 100 / 12
+  const projectionMonths = 24
+
+  let projectedBalance = 0
+  for (let month = 0; month < projectionMonths; month += 1) {
+    projectedBalance =
+      (projectedBalance + monthlyContribution) * (1 + monthlyRate)
+  }
+
+  const totalDeposits = monthlyContribution * projectionMonths
+  const interestEarned = Math.max(projectedBalance - totalDeposits, 0)
+  const progressToGoal =
+    targetAmount > 0
+      ? Math.min((projectedBalance / targetAmount) * 100, 100)
+      : 0
+
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(34,197,94,0.12),_transparent_28%),radial-gradient(circle_at_bottom_right,_rgba(59,130,246,0.12),_transparent_24%),linear-gradient(180deg,#f8fafc_0%,#eefbf4_100%)] px-4 pb-8 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-7xl">
+    <main className="h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(34,197,94,0.12),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.12),transparent_24%),linear-gradient(180deg,#f8fafc_0%,#eefbf4_100%)] px-4 sm:px-5 lg:px-6">
+      <div className="mx-auto flex h-full max-w-7xl flex-col">
         <Navbar />
 
-        <div className="grid gap-6 py-6 lg:grid-cols-[1.1fr_0.9fr]">
-          <section className="space-y-6">
-            <div className="rounded-[2rem] border border-white/70 bg-white/75 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur sm:p-8">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="max-w-2xl">
-                  <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-800">
-                    <PiggyBank className="size-3.5" />
-                    New Goal Setup
-                  </div>
-
-                  <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
-                    Create a goal with a target, a monthly plan, and a rate that
-                    helps you get there faster.
-                  </h1>
-
-                  <p className="mt-4 max-w-xl text-sm leading-6 text-slate-600 sm:text-base">
-                    Start by naming the goal and defining how much you want to
-                    contribute. Then compare rates from a few banks before you
-                    decide where your savings strategy should live.
-                  </p>
-                </div>
-
-                <div className="rounded-3xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-                  <p className="font-medium">Estimated setup time</p>
-                  <p className="mt-1 text-2xl font-semibold">2 minutes</p>
-                </div>
-              </div>
-
-              <div className="mt-8 grid gap-4 sm:grid-cols-3">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
-                    Goal horizon
-                  </p>
-                  <p className="mt-2 text-lg font-semibold text-slate-900">
-                    12 to 36 months
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
-                    Top up cadence
-                  </p>
-                  <p className="mt-2 text-lg font-semibold text-slate-900">
-                    Monthly deposits
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
-                    Best sample rate
-                  </p>
-                  <p className="mt-2 text-lg font-semibold text-emerald-700">
-                    11.4% APY
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <Card className="rounded-[2rem] border-white/70 bg-white/80 py-0 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur">
-              <CardHeader className="px-6 pt-6 sm:px-8 sm:pt-8">
-                <CardTitle className="text-2xl text-slate-950">
+        <div className="grid min-h-0 flex-1 gap-4 py-4 lg:grid-cols-[1.05fr_0.95fr]">
+          <section className="min-h-0 space-y-4">
+            <Card className="rounded-3xl border-white/70 bg-white/80 py-0 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur">
+              <CardHeader className="px-5 pt-5 sm:px-6 sm:pt-6">
+                <CardTitle className="text-xl text-slate-950">
                   Goal details
                 </CardTitle>
-                <CardDescription className="text-sm leading-6 text-slate-600">
+                <CardDescription className="text-sm leading-5 text-slate-600">
                   Fill in the three core numbers that shape your savings plan.
                 </CardDescription>
               </CardHeader>
 
-              <CardContent className="px-6 pb-6 sm:px-8 sm:pb-8">
-                <form className="grid gap-5">
-                  <label className="grid gap-2">
+              <CardContent className="px-5 pb-5 sm:px-6 sm:pb-6">
+                <form className="grid gap-4">
+                  <label className="grid gap-1.5">
                     <span className="text-sm font-medium text-slate-800">
                       Goal name
                     </span>
                     <input
                       type="text"
                       placeholder="Buy a new car"
-                      className="h-13 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
+                      className="h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
                     />
                   </label>
 
-                  <div className="grid gap-5 md:grid-cols-2">
-                    <label className="grid gap-2">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <label className="grid gap-1.5">
                       <span className="text-sm font-medium text-slate-800">
                         Monthly amount
                       </span>
-                      <div className="flex h-13 items-center rounded-2xl border border-slate-200 bg-white px-4 transition focus-within:border-emerald-400 focus-within:ring-4 focus-within:ring-emerald-100">
+                      <div className="flex h-11 items-center rounded-xl border border-slate-200 bg-white px-4 transition focus-within:border-emerald-400 focus-within:ring-4 focus-within:ring-emerald-100">
                         <span className="mr-3 text-sm font-medium text-slate-500">
                           $
                         </span>
                         <input
                           type="number"
                           placeholder="500"
+                          value={monthlyAmount}
+                          onChange={(event) => setMonthlyAmount(event.target.value)}
                           className="w-full bg-transparent text-sm text-slate-900 outline-none"
                         />
                       </div>
                     </label>
 
-                    <label className="grid gap-2">
+                    <label className="grid gap-1.5">
                       <span className="text-sm font-medium text-slate-800">
                         Goal amount
                       </span>
-                      <div className="flex h-13 items-center rounded-2xl border border-slate-200 bg-white px-4 transition focus-within:border-emerald-400 focus-within:ring-4 focus-within:ring-emerald-100">
+                      <div className="flex h-11 items-center rounded-xl border border-slate-200 bg-white px-4 transition focus-within:border-emerald-400 focus-within:ring-4 focus-within:ring-emerald-100">
                         <span className="mr-3 text-sm font-medium text-slate-500">
                           $
                         </span>
                         <input
                           type="number"
                           placeholder="20000"
+                          value={goalAmount}
+                          onChange={(event) => setGoalAmount(event.target.value)}
                           className="w-full bg-transparent text-sm text-slate-900 outline-none"
                         />
                       </div>
                     </label>
                   </div>
 
-                  <div className="rounded-3xl border border-emerald-100 bg-emerald-50/80 p-4 text-sm text-emerald-900">
-                    <div className="flex items-start gap-3">
-                      <TrendingUp className="mt-0.5 size-5 shrink-0" />
+                  <div className="rounded-2xl border border-emerald-100 bg-emerald-50/80 p-3 text-sm text-emerald-900">
+                    <div className="flex items-start gap-2.5">
+                      <TrendingUp className="mt-0.5 size-4 shrink-0" />
                       <div>
                         <p className="font-medium">Planning tip</p>
-                        <p className="mt-1 leading-6">
+                        <p className="mt-1 leading-5">
                           Higher monthly deposits reduce the time it takes to hit
                           your target, while better rates increase how much your
                           balance can compound along the way.
@@ -166,21 +127,13 @@ const NewGoalPage = () => {
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-3 pt-2 sm:flex-row">
+                  <div className="flex flex-col gap-2 pt-1 sm:flex-row">
                     <Button
                       type="button"
                       size="lg"
-                      className="h-12 rounded-2xl bg-slate-950 px-6 text-white hover:bg-slate-800"
+                      className="h-10 w-full rounded-xl bg-slate-950 px-5 text-white hover:bg-slate-800"
                     >
-                      Save goal draft
-                    </Button>
-                    <Button
-                      type="button"
-                      size="lg"
-                      variant="outline"
-                      className="h-12 rounded-2xl border-slate-300 bg-white px-6"
-                    >
-                      Compare rates first
+                      Create Goal
                     </Button>
                   </div>
                 </form>
@@ -188,89 +141,124 @@ const NewGoalPage = () => {
             </Card>
           </section>
 
-          <section className="space-y-6">
-            <Card className="rounded-[2rem] border-slate-900/5 bg-slate-950 py-0 text-white shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
-              <CardHeader className="px-6 pt-6 sm:px-8 sm:pt-8">
-                <CardTitle className="flex items-center gap-2 text-2xl text-white">
-                  <Landmark className="size-5 text-emerald-300" />
-                  Bank rates
+          <section className="min-h-0 space-y-4">
+            <Card className="rounded-3xl border-slate-900/5 bg-slate-950 py-0 text-white shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
+              <CardHeader className="px-5 pt-5 sm:px-6 sm:pt-6">
+                <CardTitle className="flex items-center gap-2 text-xl text-white">
+                  <Landmark className="size-4 text-emerald-300" />
+                  Protocol yields
                 </CardTitle>
-                <CardDescription className="text-sm leading-6 text-slate-300">
-                  A quick scan of sample savings products you can compare while
-                  setting up this goal.
+                <CardDescription className="text-sm leading-5 text-slate-300">
+                  Live vault data from LI.FI Earn for Base USDC, sorted by total
+                  APY.
                 </CardDescription>
               </CardHeader>
 
-              <CardContent className="grid gap-4 px-6 pb-6 sm:px-8 sm:pb-8">
-                {bankRates.map((bank) => (
-                  <article
-                    key={bank.bank}
-                    className={`rounded-3xl border border-white/10 bg-gradient-to-br ${bank.accent} p-[1px]`}
+              <CardContent className="grid gap-3 px-5 pb-5 sm:px-6 sm:pb-6">
+                {vaults.map((vault, index) => (
+                  <button
+                    key={`${vault.protocol.name}-${vault.name}-${index}`}
+                    type="button"
+                    onClick={() => setSelectedVaultIndex(index)}
+                    className={`h-20 rounded-2xl border text-left transition ${
+                      index === selectedVaultIndex
+                        ? 'border-emerald-300 bg-white/5'
+                        : 'border-white/10'
+                    }`}
                   >
-                    <div className="rounded-[calc(1.5rem-1px)] bg-slate-950/90 p-5">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p className="text-lg font-semibold text-white">
-                            {bank.bank}
+                    <div className="flex h-full items-center justify-between gap-3 rounded-[calc(1rem-1px)] bg-slate-950/90 px-4">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="shrink-0 text-sm font-semibold text-white">
+                            {vault.protocol.name}
                           </p>
-                          <p className="mt-1 text-sm text-slate-300">
-                            {bank.term}
-                          </p>
+                          <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-medium text-emerald-200">
+                            TVL {formatCompactUsd(vault.analytics.tvl.usd)}
+                          </span>
                         </div>
-                        <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-emerald-200">
-                          {bank.badge}
-                        </span>
+                        <p className="mt-1 truncate text-[11px] text-slate-300">
+                          {vault.name} • {vault.underlyingTokens[0]?.symbol} •{' '}
+                          {vault.network}
+                        </p>
                       </div>
 
-                      <div className="mt-6 flex items-end justify-between">
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                            Interest rate
+                      <div className="flex shrink-0 items-center gap-4">
+                        <div className="text-right">
+                          <p className="text-[10px] uppercase tracking-[0.16em] text-slate-400">
+                            APY
                           </p>
-                          <p className="mt-2 text-3xl font-semibold text-emerald-300">
-                            {bank.rate}
+                          <p className="text-lg font-semibold text-emerald-300">
+                            {formatPercent(vault.analytics.apy.total)}
                           </p>
                         </div>
-                        <Building2 className="size-10 text-white/40" />
+                        <div className="text-right text-[10px] leading-4 text-slate-300">
+                          <p>
+                            Base {formatPercent(vault.analytics.apy.base)}
+                          </p>
+                          <p>
+                            Reward {formatPercent(vault.analytics.apy.reward)}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </article>
+                  </button>
                 ))}
               </CardContent>
             </Card>
 
-            <Card className="rounded-[2rem] border-white/70 bg-white/85 py-0 shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
-              <CardHeader className="px-6 pt-6 sm:px-8 sm:pt-8">
-                <CardTitle className="flex items-center gap-2 text-slate-950">
-                  <Coins className="size-5 text-emerald-700" />
+            <Card className="rounded-3xl border-white/70 bg-white/85 py-0 shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
+              <CardHeader className="px-5 pt-5 sm:px-6 sm:pt-6">
+                <CardTitle className="flex items-center gap-2 text-lg text-slate-950">
+                  <Coins className="size-4 text-emerald-700" />
                   Example projection
                 </CardTitle>
-                <CardDescription className="text-slate-600">
-                  Based on a monthly contribution of $500 and the highest sample
-                  rate above.
+                <CardDescription className="text-sm leading-5 text-slate-600">
+                  Based on your monthly contribution and the selected protocol
+                  yield over 24 months.
                 </CardDescription>
               </CardHeader>
 
-              <CardContent className="grid gap-4 px-6 pb-6 sm:px-8 sm:pb-8">
-                <div className="rounded-2xl bg-slate-50 p-4">
+              <CardContent className="grid gap-3 px-5 pb-5 sm:px-6 sm:pb-6">
+                <div className="rounded-xl bg-slate-50 p-3.5">
                   <p className="text-sm text-slate-500">Estimated in 24 months</p>
-                  <p className="mt-2 text-3xl font-semibold text-slate-950">
-                    $13,401
+                  <p className="mt-1.5 text-2xl font-semibold text-slate-950">
+                    {formatUsd(projectedBalance)}
+                  </p>
+                  <p className="mt-1.5 text-sm text-slate-600">
+                    Using {selectedVault?.protocol.name ?? 'selected protocol'} at{' '}
+                    {formatPercent(selectedApy)} APY
                   </p>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-2xl border border-slate-200 p-4">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-xl border border-slate-200 p-3.5">
                     <p className="text-sm text-slate-500">Your deposits</p>
-                    <p className="mt-2 text-xl font-semibold text-slate-900">
-                      $12,000
+                    <p className="mt-1.5 text-lg font-semibold text-slate-900">
+                      {formatUsd(totalDeposits)}
                     </p>
                   </div>
-                  <div className="rounded-2xl border border-slate-200 p-4">
+                  <div className="rounded-xl border border-slate-200 p-3.5">
                     <p className="text-sm text-slate-500">Interest earned</p>
-                    <p className="mt-2 text-xl font-semibold text-emerald-700">
-                      $1,401
+                    <p className="mt-1.5 text-lg font-semibold text-emerald-700">
+                      {formatUsd(interestEarned)}
                     </p>
                   </div>
+                </div>
+                <div className="rounded-xl border border-slate-200 p-3.5">
+                  <div className="flex items-center justify-between gap-4">
+                    <p className="text-sm text-slate-500">Progress toward goal</p>
+                    <p className="text-sm font-medium text-slate-900">
+                      {progressToGoal.toFixed(0)}%
+                    </p>
+                  </div>
+                  <div className="mt-2.5 h-2 rounded-full bg-slate-100">
+                    <div
+                      className="h-2 rounded-full bg-emerald-500 transition-all"
+                      style={{ width: `${progressToGoal}%` }}
+                    />
+                  </div>
+                  <p className="mt-2.5 text-sm text-slate-600">
+                    Target amount: {formatUsd(targetAmount)}
+                  </p>
                 </div>
               </CardContent>
             </Card>
