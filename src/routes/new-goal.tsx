@@ -1,3 +1,4 @@
+import Authenticated from '#/guards/authenticated'
 import NewGoalPage from '#/pages/NewGoalPage'
 import { createFileRoute } from '@tanstack/react-router'
 
@@ -6,5 +7,9 @@ export const Route = createFileRoute('/new-goal')({
 })
 
 function NewGoal() {
-  return <NewGoalPage/>
+  return (
+    <Authenticated>
+      <NewGoalPage />
+    </Authenticated>
+  )
 }

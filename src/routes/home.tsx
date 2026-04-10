@@ -1,3 +1,4 @@
+import Authenticated from '#/guards/authenticated'
 import HomePage from '#/pages/dashboard/HomePage'
 import { createFileRoute } from '@tanstack/react-router'
 
@@ -6,5 +7,9 @@ export const Route = createFileRoute('/home')({
 })
 
 function Home() {
-  return <HomePage />
+  return (
+    <Authenticated>
+      <HomePage />
+    </Authenticated>
+  )
 }
