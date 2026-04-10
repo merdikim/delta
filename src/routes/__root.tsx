@@ -11,6 +11,7 @@ import TanStackQueryDevtools from '../integrations/tanstack-query/devtools'
 import appCss from '../styles.css?url'
 
 import type { QueryClient } from '@tanstack/react-query'
+import WalletProvider from '#/integrations/wallet/wallet-provider'
 
 interface MyRouterContext {
   queryClient: QueryClient
@@ -50,7 +51,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body className="font-sans antialiased wrap-anywhere">
-        {children}
+        <WalletProvider>{children}</WalletProvider>
         <TanStackDevtools
           config={{
             position: 'bottom-right',

@@ -5,6 +5,11 @@ export function getContext() {
 
   return {
     queryClient,
+    wallet: {
+      isConnected: false,
+      isConnecting: false,
+      address: undefined,
+    },
   }
 }
 export default function TanstackQueryProvider() {}

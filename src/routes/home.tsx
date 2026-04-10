@@ -1,3 +1,4 @@
+import HomePage from '#/pages/dashboard/HomePage'
 import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/home')({
@@ -5,5 +6,5 @@ export const Route = createFileRoute('/home')({
 })
 
 function Home() {
-  return <div>Hello "/home"!</div>
+  return <HomePage />
 }
