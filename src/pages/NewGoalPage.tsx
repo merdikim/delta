@@ -1,4 +1,5 @@
 import Navbar from '#/components/Navbar'
+import { createGoal, goalsQueryOptions } from '#/integrations/goals/goals'
 import { Button } from '#/components/ui/button'
 import {
   Card,
@@ -10,16 +11,22 @@ import {
 import {
   earnVaultsQueryOptions,
 } from '#/integrations/lifi/earn'
-import { useSuspenseQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useState, type FormEvent } from 'react'
 import { Coins, Landmark, TrendingUp } from 'lucide-react'
 import type { EarnVault } from '#/types'
 import { formatCompactUsd, formatPercent, formatUsd } from '#/utils'
+import { useNavigate } from '@tanstack/react-router'
+import { useAccount } from 'wagmi'
 
 const NewGoalPage = () => {
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const { address } = useAccount()
   const { data: vaults = [] } = useSuspenseQuery<EarnVault[]>(
     earnVaultsQueryOptions(),
   )
+  const [goalName, setGoalName] = useState('')
   const [monthlyAmount, setMonthlyAmount] = useState('500')
   const [goalAmount, setGoalAmount] = useState('20000')
   const [selectedVaultIndex, setSelectedVaultIndex] = useState(0)
@@ -30,20 +37,78 @@ const NewGoalPage = () => {
   const targetAmount = Number(goalAmount) || 0
   const selectedApy = selectedVault?.analytics.apy.total ?? 0
   const monthlyRate = selectedApy / 100 / 12
-  const projectionMonths = 24
+  const hasMonthlyAmountError =
+    monthlyContribution > 0 &&
+    targetAmount > 0 &&
+    monthlyContribution > targetAmount
 
   let projectedBalance = 0
-  for (let month = 0; month < projectionMonths; month += 1) {
+  let monthsToGoal = 0
+  const maxProjectionMonths = 600
+
+  while (
+    projectedBalance < targetAmount &&
+    monthsToGoal < maxProjectionMonths &&
+    monthlyContribution > 0 &&
+    targetAmount > 0
+  ) {
     projectedBalance =
       (projectedBalance + monthlyContribution) * (1 + monthlyRate)
+    monthsToGoal += 1
   }
 
-  const totalDeposits = monthlyContribution * projectionMonths
+  const hasReachableProjection =
+    targetAmount > 0 &&
+    monthlyContribution > 0 &&
+    !hasMonthlyAmountError &&
+    projectedBalance >= targetAmount
+
+  const totalDeposits = monthlyContribution * monthsToGoal
   const interestEarned = Math.max(projectedBalance - totalDeposits, 0)
-  const progressToGoal =
-    targetAmount > 0
-      ? Math.min((projectedBalance / targetAmount) * 100, 100)
-      : 0
+  const yearsToGoal = monthsToGoal / 12
+
+  const createGoalMutation = useMutation({
+    mutationFn: async () => {
+      if (!address || !selectedVault) {
+        throw new Error('Wallet or vault missing')
+      }
+
+      return createGoal({
+        data: {
+          walletAddress: address,
+          name: goalName.trim(),
+          monthlyAmount: monthlyContribution,
+          goalAmount: targetAmount,
+          selectedVaultName: selectedVault.name,
+          selectedProtocol: selectedVault.protocol.name,
+        },
+      })
+    },
+    onSuccess: async () => {
+      if (address) {
+        await queryClient.invalidateQueries(goalsQueryOptions(address))
+      }
+
+      await navigate({ to: '/home' })
+    },
+  })
+
+  const handleCreateGoal = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    if (
+      createGoalMutation.isPending ||
+      !address ||
+      !goalName.trim() ||
+      monthlyContribution <= 0 ||
+      targetAmount <= 0 ||
+      hasMonthlyAmountError
+    ) {
+      return
+    }
+
+    await createGoalMutation.mutateAsync()
+  }
 
   return (
     <main className="h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(34,197,94,0.12),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.12),transparent_24%),linear-gradient(180deg,#f8fafc_0%,#eefbf4_100%)] px-4 sm:px-5 lg:px-6">
@@ -63,7 +128,7 @@ const NewGoalPage = () => {
               </CardHeader>
 
               <CardContent className="px-5 pb-5 sm:px-6 sm:pb-6">
-                <form className="grid gap-4">
+                <form className="grid gap-4" onSubmit={handleCreateGoal}>
                   <label className="grid gap-1.5">
                     <span className="text-sm font-medium text-slate-800">
                       Goal name
@@ -71,6 +136,8 @@ const NewGoalPage = () => {
                     <input
                       type="text"
                       placeholder="Buy a new car"
+                      value={goalName}
+                      onChange={(event) => setGoalName(event.target.value)}
                       className="h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
                     />
                   </label>
@@ -113,6 +180,20 @@ const NewGoalPage = () => {
                     </label>
                   </div>
 
+                  {hasMonthlyAmountError ? (
+                    <p className="text-sm font-medium text-red-600">
+                      Monthly amount cannot be greater than goal amount.
+                    </p>
+                  ) : null}
+
+                  {createGoalMutation.isError ? (
+                    <p className="text-sm font-medium text-red-600">
+                      {createGoalMutation.error instanceof Error
+                        ? createGoalMutation.error.message
+                        : 'Unable to create goal right now.'}
+                    </p>
+                  ) : null}
+
                   <div className="rounded-2xl border border-emerald-100 bg-emerald-50/80 p-3 text-sm text-emerald-900">
                     <div className="flex items-start gap-2.5">
                       <TrendingUp className="mt-0.5 size-4 shrink-0" />
@@ -129,11 +210,19 @@ const NewGoalPage = () => {
 
                   <div className="flex flex-col gap-2 pt-1 sm:flex-row">
                     <Button
-                      type="button"
+                      type="submit"
                       size="lg"
                       className="h-10 w-full rounded-xl bg-slate-950 px-5 text-white hover:bg-slate-800"
+                      disabled={
+                        createGoalMutation.isPending ||
+                        !address ||
+                        !goalName.trim() ||
+                        monthlyContribution <= 0 ||
+                        targetAmount <= 0 ||
+                        hasMonthlyAmountError
+                      }
                     >
-                      Create Goal
+                      {createGoalMutation.isPending ? 'Creating...' : 'Create Goal'}
                     </Button>
                   </div>
                 </form>
@@ -210,19 +299,15 @@ const NewGoalPage = () => {
               <CardHeader className="px-5 pt-5 sm:px-6 sm:pt-6">
                 <CardTitle className="flex items-center gap-2 text-lg text-slate-950">
                   <Coins className="size-4 text-emerald-700" />
-                  Example projection
+                  Time to goal
                 </CardTitle>
-                <CardDescription className="text-sm leading-5 text-slate-600">
-                  Based on your monthly contribution and the selected protocol
-                  yield over 24 months.
-                </CardDescription>
               </CardHeader>
 
               <CardContent className="grid gap-3 px-5 pb-5 sm:px-6 sm:pb-6">
                 <div className="rounded-xl bg-slate-50 p-3.5">
-                  <p className="text-sm text-slate-500">Estimated in 24 months</p>
+                  <p className="text-sm text-slate-500">Estimated time to goal</p>
                   <p className="mt-1.5 text-2xl font-semibold text-slate-950">
-                    {formatUsd(projectedBalance)}
+                    {hasReachableProjection ? `${monthsToGoal} months` : '--'}
                   </p>
                   <p className="mt-1.5 text-sm text-slate-600">
                     Using {selectedVault?.protocol.name ?? 'selected protocol'} at{' '}
@@ -231,7 +316,7 @@ const NewGoalPage = () => {
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="rounded-xl border border-slate-200 p-3.5">
-                    <p className="text-sm text-slate-500">Your deposits</p>
+                    <p className="text-sm text-slate-500">Estimated deposits</p>
                     <p className="mt-1.5 text-lg font-semibold text-slate-900">
                       {formatUsd(totalDeposits)}
                     </p>
@@ -245,19 +330,18 @@ const NewGoalPage = () => {
                 </div>
                 <div className="rounded-xl border border-slate-200 p-3.5">
                   <div className="flex items-center justify-between gap-4">
-                    <p className="text-sm text-slate-500">Progress toward goal</p>
+                    <p className="text-sm text-slate-500">Time in years</p>
                     <p className="text-sm font-medium text-slate-900">
-                      {progressToGoal.toFixed(0)}%
+                      {hasReachableProjection ? yearsToGoal.toFixed(1) : '--'}
                     </p>
-                  </div>
-                  <div className="mt-2.5 h-2 rounded-full bg-slate-100">
-                    <div
-                      className="h-2 rounded-full bg-emerald-500 transition-all"
-                      style={{ width: `${progressToGoal}%` }}
-                    />
                   </div>
                   <p className="mt-2.5 text-sm text-slate-600">
                     Target amount: {formatUsd(targetAmount)}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    {hasReachableProjection
+                      ? `Projected balance at goal month: ${formatUsd(projectedBalance)}`
+                      : 'Enter a valid monthly amount and goal amount to see the estimate.'}
                   </p>
                 </div>
               </CardContent>

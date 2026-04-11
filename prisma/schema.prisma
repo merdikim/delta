@@ -7,8 +7,16 @@ datasource db {
   provider = "postgresql"
 }
 
-model Todo {
-  id        Int      @id @default(autoincrement())
-  title     String
+model Goal {
+  id                String   @id @default(cuid())
+  walletAddress     String
+  name              String
+  monthlyAmount     Decimal  @db.Decimal(18, 2)
+  goalAmount        Decimal  @db.Decimal(18, 2)
+  selectedVaultName String?
+  selectedProtocol  String?
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([walletAddress, createdAt(sort: Desc)])
 }

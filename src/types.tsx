@@ -1,6 +1,13 @@
 export type Goal = {
+  id: string
+  walletAddress: string
   name: string
-  createdAt: number
+  monthlyAmount: number
+  goalAmount: number
+  selectedVaultName?: string
+  selectedProtocol?: string
+  createdAt: string
+  updatedAt: string
 }
 
 export type EarnVaultApy = {

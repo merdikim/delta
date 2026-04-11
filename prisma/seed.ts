@@ -1,5 +1,4 @@
 import { PrismaClient } from '../src/generated/prisma/client.js'
-
 import { PrismaPg } from '@prisma/adapter-pg'
 
 const adapter = new PrismaPg({
@@ -11,19 +10,30 @@ const prisma = new PrismaClient({ adapter })
 async function main() {
   console.log('🌱 Seeding database...')
 
-  // Clear existing todos
-  await prisma.todo.deleteMany()
+  await prisma.goal.deleteMany()
 
-  // Create example todos
-  const todos = await prisma.todo.createMany({
+  const goals = await prisma.goal.createMany({
     data: [
-      { title: 'Buy groceries' },
-      { title: 'Read a book' },
-      { title: 'Workout' },
+      {
+        walletAddress: '0x1234567890abcdef1234567890abcdef12345678',
+        name: 'Buy Porsche Cayenne',
+        monthlyAmount: '500.00',
+        goalAmount: '20000.00',
+        selectedVaultName: 'USDC',
+        selectedProtocol: 'yo-protocol',
+      },
+      {
+        walletAddress: '0x1234567890abcdef1234567890abcdef12345678',
+        name: 'Build rainy day fund',
+        monthlyAmount: '300.00',
+        goalAmount: '10000.00',
+        selectedVaultName: 'CSUSDC',
+        selectedProtocol: 'morpho-v1',
+      },
     ],
   })
 
-  console.log(`✅ Created ${todos.count} todos`)
+  console.log(`✅ Created ${goals.count} goals`)
 }
 
 main()
