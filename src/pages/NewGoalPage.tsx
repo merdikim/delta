@@ -111,7 +111,7 @@ const NewGoalPage = () => {
   }
 
   return (
-    <main className="h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(34,197,94,0.12),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.12),transparent_24%),linear-gradient(180deg,#f8fafc_0%,#eefbf4_100%)] px-4 sm:px-5 lg:px-6">
+    <main className="h-screen overflow-hidden px-4 sm:px-5 lg:px-6">
       <div className="mx-auto flex h-full max-w-7xl flex-col">
         <Navbar />
 
@@ -231,13 +231,13 @@ const NewGoalPage = () => {
           </section>
 
           <section className="min-h-0 space-y-4">
-            <Card className="rounded-3xl border-slate-900/5 bg-slate-950 py-0 text-white shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
+            <Card className="rounded-3xl border-slate-900/5 py-0 shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
               <CardHeader className="px-5 pt-5 sm:px-6 sm:pt-6">
-                <CardTitle className="flex items-center gap-2 text-xl text-white">
+                <CardTitle className="flex items-center gap-2 text-xl">
                   <Landmark className="size-4 text-emerald-300" />
                   Protocol yields
                 </CardTitle>
-                <CardDescription className="text-sm leading-5 text-slate-300">
+                <CardDescription className="text-sm leading-5 text-slate-700">
                   Live vault data from LI.FI Earn for Base USDC, sorted by total
                   APY.
                 </CardDescription>
@@ -251,21 +251,21 @@ const NewGoalPage = () => {
                     onClick={() => setSelectedVaultIndex(index)}
                     className={`h-20 rounded-2xl border text-left transition ${
                       index === selectedVaultIndex
-                        ? 'border-emerald-300 bg-white/5'
+                        ? 'border-emerald-300'
                         : 'border-white/10'
                     }`}
                   >
-                    <div className="flex h-full items-center justify-between gap-3 rounded-[calc(1rem-1px)] bg-slate-950/90 px-4">
+                    <div className="flex h-full items-center justify-between gap-3 rounded-[calc(1rem-1px)] px-4">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <p className="shrink-0 text-sm font-semibold text-white">
+                          <p className="shrink-0 text-sm font-semibold">
                             {vault.protocol.name}
                           </p>
-                          <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-medium text-emerald-200">
+                          <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-medium text-green-800">
                             TVL {formatCompactUsd(vault.analytics.tvl.usd)}
                           </span>
                         </div>
-                        <p className="mt-1 truncate text-[11px] text-slate-300">
+                        <p className="mt-1 truncate text-[11px]">
                           {vault.name} • {vault.underlyingTokens[0]?.symbol} •{' '}
                           {vault.network}
                         </p>
@@ -273,14 +273,14 @@ const NewGoalPage = () => {
 
                       <div className="flex shrink-0 items-center gap-4">
                         <div className="text-right">
-                          <p className="text-[10px] uppercase tracking-[0.16em] text-slate-400">
+                          <p className="text-[10px] uppercase tracking-[0.16em]">
                             APY
                           </p>
-                          <p className="text-lg font-semibold text-emerald-300">
+                          <p className="text-lg font-semibold text-emerald-600">
                             {formatPercent(vault.analytics.apy.total)}
                           </p>
                         </div>
-                        <div className="text-right text-[10px] leading-4 text-slate-300">
+                        <div className="text-right text-[10px] leading-4">
                           <p>
                             Base {formatPercent(vault.analytics.apy.base)}
                           </p>

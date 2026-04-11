@@ -16,7 +16,7 @@ const HomePage = () => {
   })
 
   return (
-    <div className="h-screen w-screen bg-[radial-gradient(circle_at_top_left,rgba(34,197,94,0.12),transparent_28%),linear-gradient(180deg,#f8fafc_0%,#eefbf4_100%)] px-6 lg:px-8">
+    <div className="h-screen w-screen px-6 lg:px-8">
       <Navbar />
       <div className="flex h-[calc(100vh-var(--navbar-height))] gap-6 py-4">
         <div className="flex w-full flex-col gap-4 lg:w-4/12">
