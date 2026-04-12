@@ -17,12 +17,17 @@ const createGoalSchema = z.object({
   selectedProtocol: z.string().optional(),
 })
 
+const deleteGoalSchema = z.object({
+  id: z.string().min(1),
+  walletAddress: z.string().min(1),
+})
+
 function mapGoal(goal: {
   id: string
   walletAddress: string
   name: string
-  monthlyAmount: { toString(): string }
-  goalAmount: { toString(): string }
+  monthlyAmount: { toString: () => string }
+  goalAmount: { toString: () => string }
   selectedVaultName: string | null
   selectedProtocol: string | null
   createdAt: Date
@@ -69,6 +74,28 @@ export const createGoal = createServerFn({ method: 'POST' })
     })
 
     return mapGoal(goal)
+  })
+
+export const deleteGoal = createServerFn({ method: 'POST' })
+  .inputValidator((input) => deleteGoalSchema.parse(input))
+  .handler(async ({ data }): Promise<{ id: string }> => {
+    const existingGoal = await prisma.goal.findFirst({
+      where: {
+        id: data.id,
+        walletAddress: data.walletAddress,
+      },
+      select: { id: true },
+    })
+
+    if (!existingGoal) {
+      throw new Error('Goal not found')
+    }
+
+    await prisma.goal.delete({
+      where: { id: data.id },
+    })
+
+    return { id: data.id }
   })
 
 export function goalsQueryOptions(walletAddress: string) {

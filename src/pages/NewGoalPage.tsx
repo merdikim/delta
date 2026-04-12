@@ -15,17 +15,28 @@ import {
   depositToVault,
   earnVaultsQueryOptions,
 } from '#/integrations/lifi/earn'
-import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import {
+  useMutation,
+  useQueryClient,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useState } from 'react'
 import { Coins, Landmark, TrendingUp } from 'lucide-react'
 import type { EarnVault } from '#/types'
-import { BASE_CHAIN_ID, BASE_USDC_ADDRESS, confettiPieces, formatCompactUsd, formatPercent, formatTokenBalance, formatUsd } from '#/utils'
+import {
+  BASE_CHAIN_ID,
+  BASE_USDC_ADDRESS,
+  confettiPieces,
+  formatCompactUsd,
+  formatPercent,
+  formatTokenBalance,
+  formatUsd,
+} from '#/utils'
 import { useNavigate } from '@tanstack/react-router'
 import { useAccount, useBalance, useConfig } from 'wagmi'
-import { sendTransaction, switchChain} from '@wagmi/core'
+import { sendTransaction, switchChain } from '@wagmi/core'
 import { parseUnits } from 'viem'
-
 
 const NewGoalPage = () => {
   const navigate = useNavigate()
@@ -37,7 +48,7 @@ const NewGoalPage = () => {
   )
   const vaults = allVaults.filter((vault) => vault.isTransactional)
   const [goalName, setGoalName] = useState('')
-  const [monthlyAmount, setMonthlyAmount] = useState('500')
+  const [initialAmount, setInitialAmount] = useState('500')
   const [goalAmount, setGoalAmount] = useState('20000')
   const [selectedVaultIndex, setSelectedVaultIndex] = useState(0)
   const [showSuccessState, setShowSuccessState] = useState(false)
@@ -78,47 +89,42 @@ const NewGoalPage = () => {
 
   const topVault = vaults[0]
   const selectedVault = vaults[selectedVaultIndex] ?? topVault
-  const monthlyContribution = Number(monthlyAmount) || 0
+  const initialContribution = Number(initialAmount) || 0
   const targetAmount = Number(goalAmount) || 0
   const selectedApy = selectedVault.analytics.apy.total
   const monthlyRate = selectedApy / 100 / 12
-  const hasMonthlyAmountError =
-    monthlyContribution > 0 &&
-    targetAmount > 0 &&
-    monthlyContribution > targetAmount
 
-  let projectedBalance = 0
+  let projectedBalance = initialContribution
   let monthsToGoal = 0
   const maxProjectionMonths = 600
 
   while (
     projectedBalance < targetAmount &&
     monthsToGoal < maxProjectionMonths &&
-    monthlyContribution > 0 &&
+    initialContribution > 0 &&
     targetAmount > 0
   ) {
-    projectedBalance =
-      (projectedBalance + monthlyContribution) * (1 + monthlyRate)
+    projectedBalance = projectedBalance * (1 + monthlyRate)
     monthsToGoal += 1
   }
 
   const hasReachableProjection =
     targetAmount > 0 &&
-    monthlyContribution > 0 &&
-    !hasMonthlyAmountError &&
+    initialContribution > 0 &&
     projectedBalance >= targetAmount
 
-  const totalDeposits = monthlyContribution * monthsToGoal
-  const interestEarned = Math.max(projectedBalance - totalDeposits, 0)
+  const totalDeposits = initialContribution
+  const interestEarned = Math.max(projectedBalance - initialContribution, 0)
   const yearsToGoal = monthsToGoal / 12
-  const depositAmount = monthlyContribution > 0 ? parseUnits(monthlyAmount, 6) : 0n
+  const depositAmount =
+    initialContribution > 0 ? parseUnits(initialAmount, 6) : 0n
   const baseUsdcBalance = usdcBaseBalance.data?.value
   const missingBaseUsdc =
     baseUsdcBalance === undefined || baseUsdcBalance >= depositAmount
       ? 0n
       : depositAmount - baseUsdcBalance
   const hasInsufficientBaseUsdc =
-    monthlyContribution > 0 &&
+    initialContribution > 0 &&
     baseUsdcBalance !== undefined &&
     baseUsdcBalance < depositAmount
 
@@ -128,7 +134,7 @@ const NewGoalPage = () => {
         throw new Error('Wallet or vault missing')
       }
 
-      const fromAmount = parseUnits(monthlyAmount, 6).toString() // USDC decimals
+      const fromAmount = parseUnits(initialAmount, 6).toString()
 
       const quote = await getComposerQuote({
         data: {
@@ -157,7 +163,7 @@ const NewGoalPage = () => {
         data: {
           walletAddress: address,
           name: goalName.trim(),
-          monthlyAmount: monthlyContribution,
+          monthlyAmount: initialContribution,
           goalAmount: targetAmount,
           selectedVaultName: selectedVault.name,
           selectedProtocol: selectedVault.protocol.name,
@@ -184,9 +190,8 @@ const NewGoalPage = () => {
       createGoalMutation.isPending ||
       !address ||
       !goalName.trim() ||
-      monthlyContribution <= 0 ||
+      initialContribution <= 0 ||
       targetAmount <= 0 ||
-      hasMonthlyAmountError ||
       hasInsufficientBaseUsdc
     ) {
       return
@@ -248,7 +253,7 @@ const NewGoalPage = () => {
                   Goal details
                 </CardTitle>
                 <CardDescription className="text-sm leading-5 text-slate-600">
-                  Fill in the three core numbers that shape your savings plan.
+                  Fill in the core numbers that shape your savings plan.
                 </CardDescription>
               </CardHeader>
 
@@ -270,7 +275,7 @@ const NewGoalPage = () => {
                   <div className="grid gap-4 md:grid-cols-2">
                     <label className="grid gap-1.5">
                       <span className="text-sm font-medium text-slate-800">
-                        Monthly amount
+                        Initial amount
                       </span>
                       <div className="flex h-11 items-center rounded-xl border border-slate-200 bg-white px-4 transition focus-within:border-emerald-400 focus-within:ring-4 focus-within:ring-emerald-100">
                         <span className="mr-3 text-sm font-medium text-slate-500">
@@ -279,8 +284,10 @@ const NewGoalPage = () => {
                         <input
                           type="number"
                           placeholder="500"
-                          value={monthlyAmount}
-                          onChange={(event) => setMonthlyAmount(event.target.value)}
+                          value={initialAmount}
+                          onChange={(event) =>
+                            setInitialAmount(event.target.value)
+                          }
                           className="w-full bg-transparent text-sm text-slate-900 outline-none"
                         />
                       </div>
@@ -298,18 +305,14 @@ const NewGoalPage = () => {
                           type="number"
                           placeholder="20000"
                           value={goalAmount}
-                          onChange={(event) => setGoalAmount(event.target.value)}
+                          onChange={(event) =>
+                            setGoalAmount(event.target.value)
+                          }
                           className="w-full bg-transparent text-sm text-slate-900 outline-none"
                         />
                       </div>
                     </label>
                   </div>
-
-                  {hasMonthlyAmountError ? (
-                    <p className="text-sm font-medium text-red-600">
-                      Monthly amount cannot be greater than goal amount.
-                    </p>
-                  ) : null}
 
                   {createGoalMutation.isError ? (
                     <p className="text-sm font-medium text-red-600">
@@ -321,16 +324,19 @@ const NewGoalPage = () => {
 
                   {hasInsufficientBaseUsdc ? (
                     <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-                      <p className="font-medium">Insufficient Base USDC balance</p>
-                      <p className="my-1 leading-5">
-                        You have {formatTokenBalance(baseUsdcBalance, 6)} USDC on
-                        Base, but this deposit needs {formatTokenBalance(depositAmount, 6)} USDC.
+                      <p className="font-medium">
+                        Insufficient Base USDC balance
                       </p>
-                      
+                      <p className="my-1 leading-5">
+                        You have {formatTokenBalance(baseUsdcBalance, 6)} USDC
+                        on Base, but this deposit needs{' '}
+                        {formatTokenBalance(depositAmount, 6)} USDC.
+                      </p>
+
                       <Button
                         type="button"
                         className="mt-2 w-full"
-                        //onClick={openBridgeModal}
+                        // onClick={openBridgeModal}
                       >
                         Bridge before continuing
                       </Button>
@@ -343,9 +349,8 @@ const NewGoalPage = () => {
                       <div>
                         <p className="font-medium">Planning tip</p>
                         <p className="mt-1 leading-5">
-                          Higher monthly deposits reduce the time it takes to hit
-                          your target, while better rates increase how much your
-                          balance can compound along the way.
+                          A stronger starting deposit and better rates can help
+                          your balance compound to the goal faster.
                         </p>
                       </div>
                     </div>
@@ -360,9 +365,8 @@ const NewGoalPage = () => {
                         createGoalMutation.isPending ||
                         !address ||
                         !goalName.trim() ||
-                        monthlyContribution <= 0 ||
+                        initialContribution <= 0 ||
                         targetAmount <= 0 ||
-                        hasMonthlyAmountError ||
                         hasInsufficientBaseUsdc
                       }
                     >
@@ -374,7 +378,6 @@ const NewGoalPage = () => {
                 </form>
               </CardContent>
             </Card>
-
           </section>
 
           <section className="min-h-0 space-y-4">
@@ -428,9 +431,7 @@ const NewGoalPage = () => {
                           </p>
                         </div>
                         <div className="text-right text-[10px] leading-4">
-                          <p>
-                            Base {formatPercent(vault.analytics.apy.base)}
-                          </p>
+                          <p>Base {formatPercent(vault.analytics.apy.base)}</p>
                           <p>
                             Reward {formatPercent(vault.analytics.apy.reward)}
                           </p>
@@ -442,7 +443,7 @@ const NewGoalPage = () => {
               </CardContent>
             </Card>
 
-            <Card className="rounded-3xl border-white/70 bg-white/85 py-0 shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
+            {/* <Card className="rounded-3xl border-white/70 bg-white/85 py-0 shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
               <CardHeader className="px-5 pt-5 sm:px-6 sm:pt-6">
                 <CardTitle className="flex items-center gap-2 text-lg text-slate-950">
                   <Coins className="size-4 text-emerald-700" />
@@ -452,17 +453,24 @@ const NewGoalPage = () => {
 
               <CardContent className="grid gap-3 px-5 pb-5 sm:px-6 sm:pb-6">
                 <div className="rounded-xl bg-slate-50 p-3.5">
-                  <p className="text-sm text-slate-500">Estimated time to goal</p>
+                  <p className="text-sm text-slate-500">
+                    Estimated time to goal
+                  </p>
                   <p className="mt-1.5 text-2xl font-semibold text-slate-950">
-                    {hasReachableProjection ? `${monthsToGoal} months` : '--'}
+                    {hasReachableProjection
+                      ? monthsToGoal === 0
+                        ? 'Now'
+                        : `${monthsToGoal} months`
+                      : '--'}
                   </p>
                   <p className="mt-1.5 text-sm text-slate-600">
-                    Using {selectedVault.protocol.name} at {formatPercent(selectedApy)} APY
+                    Using {selectedVault.protocol.name} at{' '}
+                    {formatPercent(selectedApy)} APY
                   </p>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="rounded-xl border border-slate-200 p-3.5">
-                    <p className="text-sm text-slate-500">Estimated deposits</p>
+                    <p className="text-sm text-slate-500">Initial deposit</p>
                     <p className="mt-1.5 text-lg font-semibold text-slate-900">
                       {formatUsd(totalDeposits)}
                     </p>
@@ -486,12 +494,12 @@ const NewGoalPage = () => {
                   </p>
                   <p className="mt-1 text-sm text-slate-600">
                     {hasReachableProjection
-                      ? `Projected balance at goal month: ${formatUsd(projectedBalance)}`
-                      : 'Enter a valid monthly amount and goal amount to see the estimate.'}
+                      ? `Projected balance at target time: ${formatUsd(projectedBalance)}`
+                      : 'Enter a valid initial amount and goal amount to see the estimate.'}
                   </p>
                 </div>
               </CardContent>
-            </Card>
+            </Card> */}
           </section>
         </div>
       </div>

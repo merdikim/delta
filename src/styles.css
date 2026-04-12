@@ -46,8 +46,8 @@ body {
   --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
   --sidebar-border: oklch(0.92 0.004 286.32);
   --sidebar-ring: oklch(0.871 0.006 286.286);
-  --navbar-height: 5rem;
-  --border: oklch(96.7% 0.003 264.542)
+  --navbar-height: 3rem;
+  --border: oklch(96.7% 0.003 264.542);
 }
 
 /* .dark {
@@ -87,12 +87,7 @@ body {
 
 @theme inline {
   --color-background: var(--background);
-  --color-border: var(--border)
-
-
-
-
-  --color-foreground: var(--foreground);
+  --color-border: var(--border) --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);

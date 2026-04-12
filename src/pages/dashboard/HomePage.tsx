@@ -1,19 +1,77 @@
+import GoalDetailsPanel from '#/components/dashboard/GoalDetailsPanel'
 import GoalCard from '#/components/cards/GoalCard'
-import { goalsQueryOptions } from '#/integrations/goals/goals'
+import { deleteGoal, goalsQueryOptions } from '#/integrations/goals/goals'
+import {
+  earnPortfolioPositionsQueryOptions,
+  earnVaultsQueryOptions,
+} from '#/integrations/lifi/earn'
 import Navbar from '#/components/Navbar'
-import type { Goal } from '#/types'
-import { useQuery } from '@tanstack/react-query'
+import type { EarnPortfolioPosition, EarnVault, Goal } from '#/types'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
+import { useEffect, useState } from 'react'
 import { useAccount } from 'wagmi'
 import { cn } from '#/lib/utils'
 import { ArrowRight, Goal as GoalIcon, Sparkles, Target } from 'lucide-react'
 
 const HomePage = () => {
+  const queryClient = useQueryClient()
   const { address } = useAccount()
   const { data: goals = [] } = useQuery<Goal[]>({
     ...goalsQueryOptions(address ?? ''),
     enabled: Boolean(address),
   })
+  const { data: vaults = [] } = useQuery<EarnVault[]>(earnVaultsQueryOptions())
+  const { data: portfolioPositions = [] } = useQuery<EarnPortfolioPosition[]>({
+    ...earnPortfolioPositionsQueryOptions(address ?? ''),
+    enabled: Boolean(address),
+  })
+  const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null)
+
+  const deleteGoalMutation = useMutation({
+    mutationFn: async (goalId: string) => {
+      if (!address) {
+        throw new Error('Wallet missing')
+      }
+
+      return deleteGoal({
+        data: {
+          id: goalId,
+          walletAddress: address,
+        },
+      })
+    },
+    onSuccess: async (_, goalId) => {
+      if (selectedGoalId === goalId) {
+        setSelectedGoalId(null)
+      }
+
+      if (address) {
+        await queryClient.invalidateQueries(goalsQueryOptions(address))
+      }
+    },
+  })
+
+  useEffect(() => {
+    if (goals.length === 0) {
+      setSelectedGoalId(null)
+      return
+    }
+
+    const hasSelectedGoal = goals.some((goal) => goal.id === selectedGoalId)
+    if (!hasSelectedGoal) {
+      setSelectedGoalId(goals[0]?.id ?? null)
+    }
+  }, [goals, selectedGoalId])
+
+  const selectedGoal = goals.find((goal) => goal.id === selectedGoalId)
+  const activeGoal = selectedGoal ?? goals[0]
+  const activeGoalVault = vaults.find(
+    (vault) =>
+      vault.name === activeGoal.selectedVaultName &&
+      vault.protocol.name === activeGoal.selectedProtocol,
+  )
+  const activeGoalYieldPercent = activeGoalVault?.analytics.apy.total ?? 0
 
   return (
     <div className="h-screen w-screen px-6 lg:px-8">
@@ -35,7 +93,19 @@ const HomePage = () => {
             {goals.length ? (
               <div className="flex-1 overflow-y-auto px-4 py-3">
                 {goals.map((goal) => (
-                  <GoalCard key={goal.id} goal={goal} />
+                  <GoalCard
+                    key={goal.id}
+                    goal={goal}
+                    isSelected={goal.id === (selectedGoalId ?? goals[0].id)}
+                    onClick={() => setSelectedGoalId(goal.id)}
+                    onDelete={(goalToDelete) => {
+                      void deleteGoalMutation.mutateAsync(goalToDelete.id)
+                    }}
+                    isDeleting={
+                      deleteGoalMutation.isPending &&
+                      deleteGoalMutation.variables === goal.id
+                    }
+                  />
                 ))}
               </div>
             ) : (
@@ -47,7 +117,7 @@ const HomePage = () => {
                   </div>
 
                   <h3 className="mt-4 text-2xl font-semibold leading-tight">
-                    Your first goal can start with one small monthly step.
+                    Your first goal can start with one clear first deposit.
                   </h3>
 
                   <p className="mt-3 text-sm leading-6 text-slate-300">
@@ -111,35 +181,12 @@ const HomePage = () => {
           ) : null}
         </div>
 
-        <div className="hidden flex-1 lg:block">
-          <div className="flex h-full items-center justify-center rounded-4xl border border-white/70 bg-white/45 shadow-[0_18px_50px_rgba(15,23,42,0.05)] backdrop-blur">
-            {goals.length ? (
-              <div className="text-sm text-slate-500">
-                Select a goal to see more detail.
-              </div>
-            ) : (
-              <div className="max-w-xl px-8 text-center">
-                <p className="text-sm font-medium uppercase tracking-[0.24em] text-emerald-700">
-                  Goal planning
-                </p>
-                <h3 className="mt-4 text-4xl font-semibold leading-tight text-slate-950">
-                  Turn a future purchase into a clear savings path.
-                </h3>
-                <p className="mt-4 text-base leading-7 text-slate-600">
-                  Start with a target, layer in monthly deposits, and compare live
-                  protocol yields to see how quickly you can get there.
-                </p>
-                <Link
-                    to="/new-goal"
-                    className="mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-400 px-5 text-sm font-semibold text-slate-950 transition hover:bg-emerald-300"
-                  >
-                    Create your first goal
-                    <ArrowRight className="size-4" />
-                  </Link>
-              </div>
-            )}
-          </div>
-        </div>
+        <GoalDetailsPanel
+          goal={activeGoal}
+          positions={portfolioPositions}
+          yieldPercent={activeGoalYieldPercent}
+          vault={activeGoalVault}
+        />
       </div>
     </div>
   )

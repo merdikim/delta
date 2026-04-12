@@ -100,13 +100,16 @@ export default function BridgeModal({
         <div className="mt-5 grid gap-3">
           <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
             <div className="flex items-center justify-between gap-4">
-              <span className="text-sm text-slate-500">Amount needed on Base</span>
+              <span className="text-sm text-slate-500">
+                Amount needed on Base
+              </span>
               <span className="text-lg font-semibold text-slate-950">
                 {formatTokenBalance(missingBaseUsdc, 6)} USDC
               </span>
             </div>
             <p className="mt-2 text-sm text-slate-600">
-              Current Base balance: {formatTokenBalance(baseUsdcBalance, 6)} USDC
+              Current Base balance: {formatTokenBalance(baseUsdcBalance, 6)}{' '}
+              USDC
             </p>
           </div>
 
@@ -176,7 +179,8 @@ export default function BridgeModal({
                     {quote.action.toToken.symbol ?? 'USDC'}
                   </p>
                   <p className="mt-1 text-sm text-slate-600">
-                    Minimum: {formatTokenBalance(
+                    Minimum:{' '}
+                    {formatTokenBalance(
                       quote.estimate.toAmountMin
                         ? BigInt(quote.estimate.toAmountMin)
                         : undefined,

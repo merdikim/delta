@@ -1,4 +1,5 @@
-import { formatUnits, type Address } from "viem"
+import { formatUnits  } from 'viem'
+import type {Address} from 'viem';
 
 export function formatPercent(value: number) {
   return `${value.toFixed(2)}%`
@@ -14,26 +15,78 @@ export function formatCompactUsd(value: string) {
 }
 
 export function formatUsd(value: number) {
+  const hasCents = Math.abs(value % 1) > Number.EPSILON
+
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
-    maximumFractionDigits: 0,
+    minimumFractionDigits: hasCents ? 2 : 0,
+    maximumFractionDigits: 2,
   }).format(value)
 }
 
 export const confettiPieces = [
-  { left: '8%', delay: '0s', duration: '2.6s', color: '#22c55e', rotate: '-12deg' },
-  { left: '18%', delay: '0.15s', duration: '2.9s', color: '#0ea5e9', rotate: '10deg' },
-  { left: '29%', delay: '0.35s', duration: '2.5s', color: '#f59e0b', rotate: '-8deg' },
-  { left: '41%', delay: '0.1s', duration: '3.1s', color: '#f43f5e', rotate: '14deg' },
-  { left: '53%', delay: '0.45s', duration: '2.7s', color: '#14b8a6', rotate: '-14deg' },
-  { left: '65%', delay: '0.2s', duration: '3s', color: '#a855f7', rotate: '8deg' },
-  { left: '77%', delay: '0.55s', duration: '2.8s', color: '#22c55e', rotate: '-10deg' },
-  { left: '89%', delay: '0.3s', duration: '2.6s', color: '#fb7185', rotate: '12deg' },
+  {
+    left: '8%',
+    delay: '0s',
+    duration: '2.6s',
+    color: '#22c55e',
+    rotate: '-12deg',
+  },
+  {
+    left: '18%',
+    delay: '0.15s',
+    duration: '2.9s',
+    color: '#0ea5e9',
+    rotate: '10deg',
+  },
+  {
+    left: '29%',
+    delay: '0.35s',
+    duration: '2.5s',
+    color: '#f59e0b',
+    rotate: '-8deg',
+  },
+  {
+    left: '41%',
+    delay: '0.1s',
+    duration: '3.1s',
+    color: '#f43f5e',
+    rotate: '14deg',
+  },
+  {
+    left: '53%',
+    delay: '0.45s',
+    duration: '2.7s',
+    color: '#14b8a6',
+    rotate: '-14deg',
+  },
+  {
+    left: '65%',
+    delay: '0.2s',
+    duration: '3s',
+    color: '#a855f7',
+    rotate: '8deg',
+  },
+  {
+    left: '77%',
+    delay: '0.55s',
+    duration: '2.8s',
+    color: '#22c55e',
+    rotate: '-10deg',
+  },
+  {
+    left: '89%',
+    delay: '0.3s',
+    duration: '2.6s',
+    color: '#fb7185',
+    rotate: '12deg',
+  },
 ]
 
 export const BASE_CHAIN_ID = 8453
-export const BASE_USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' as Address
+export const BASE_USDC_ADDRESS =
+  '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' as Address
 export const BRIDGEABLE_CHAINS = {
   1: {
     label: 'Ethereum',
@@ -47,7 +100,10 @@ export const BRIDGEABLE_CHAINS = {
 
 export const DEFAULT_BRIDGE_SOURCE_CHAIN_ID = 1
 
-export function formatTokenBalance(value: bigint | undefined, decimals: number) {
+export function formatTokenBalance(
+  value: bigint | undefined,
+  decimals: number,
+) {
   if (value === undefined) {
     return '--'
   }
@@ -64,4 +120,33 @@ export function getBridgeableChain(chainId?: number) {
   }
 
   return BRIDGEABLE_CHAINS[chainId as keyof typeof BRIDGEABLE_CHAINS]
+}
+
+export function formatDate(
+  value: string | number | Date,
+  options?: Intl.DateTimeFormatOptions,
+) {
+  const date = value instanceof Date ? value : new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return '--'
+  }
+
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    ...options,
+  }).format(date)
+}
+
+export function truncate(
+  value: string,
+  length = 3,
+) {
+  if (value.length <= length) {
+    return value
+  }
+
+  return `${value.slice(0, length)}...${value.slice(-length)}`
 }

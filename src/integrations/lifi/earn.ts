@@ -1,11 +1,26 @@
 import type { ComposerQuote } from '#/integrations/lifi/composer'
-import type { EarnVault, EarnVaultsResponse } from '#/types'
+import type {
+  EarnPortfolioPosition,
+  EarnPortfolioPositionsResponse,
+  EarnVault,
+  EarnVaultsResponse,
+} from '#/types'
 import { queryOptions } from '@tanstack/react-query'
 import { createServerFn } from '@tanstack/react-start'
-import { getPublicClient, sendTransaction, waitForTransactionReceipt, writeContract } from '@wagmi/core'
+import {
+  getPublicClient,
+  sendTransaction,
+  waitForTransactionReceipt,
+  writeContract,
+} from '@wagmi/core'
 import { erc20Abi, zeroAddress } from 'viem'
 import type { Address, Hex } from 'viem'
 import type { useConfig } from 'wagmi'
+import { z } from 'zod'
+
+const walletAddressSchema = z.object({
+  walletAddress: z.string().min(1),
+})
 
 export const getEarnVaults = createServerFn({
   method: 'GET',
@@ -41,6 +56,47 @@ export function earnVaultsQueryOptions() {
   })
 }
 
+export const getEarnPortfolioPositions = createServerFn({
+  method: 'GET',
+})
+  .inputValidator((input: { walletAddress: string }) =>
+    walletAddressSchema.parse(input),
+  )
+  .handler(async ({ data }): Promise<EarnPortfolioPosition[]> => {
+    const apiKey = process.env.LIFI_EARN_API_KEY
+
+    if (!apiKey) {
+      throw new Error('Missing LIFI_EARN_API_KEY')
+    }
+
+    const response = await fetch(
+      `https://earn.li.fi/v1/earn/portfolio/${data.walletAddress}/positions`,
+      {
+        headers: {
+          'x-lifi-api-key': apiKey,
+        },
+      },
+    )
+
+    if (!response.ok) {
+      throw new Error('Failed to load LI.FI Earn portfolio positions')
+    }
+
+    const portfolio =
+      (await response.json()) as EarnPortfolioPositionsResponse
+
+    return portfolio.positions
+  })
+
+export function earnPortfolioPositionsQueryOptions(walletAddress: string) {
+  return queryOptions<EarnPortfolioPosition[]>({
+    queryKey: ['lifi-earn-portfolio-positions', walletAddress],
+    queryFn: () => getEarnPortfolioPositions({ data: { walletAddress } }),
+    enabled: Boolean(walletAddress),
+    staleTime: 1000 * 60,
+  })
+}
+
 export async function depositToVault({
   quote,
   account,
@@ -60,7 +116,7 @@ export async function depositToVault({
     approvalAddress &&
     fromTokenAddress.toLowerCase() !== zeroAddress.toLowerCase()
   ) {
-    //@ts-ignore
+    // @ts-expect-error wagmi public client contract typing is narrower than the runtime viem call here
     const allowance = await publicClient.readContract({
       abi: erc20Abi,
       address: fromTokenAddress,

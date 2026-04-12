@@ -77,3 +77,22 @@ export type EarnVaultsResponse = {
   nextCursor?: string
   total?: number
 }
+
+export type EarnPortfolioAsset = {
+  address: string
+  name: string
+  symbol: string
+  decimals: number
+}
+
+export type EarnPortfolioPosition = {
+  chainId: number
+  protocolName: string
+  asset: EarnPortfolioAsset
+  balanceUsd: string
+  balanceNative: string
+}
+
+export type EarnPortfolioPositionsResponse = {
+  positions: EarnPortfolioPosition[]
+}

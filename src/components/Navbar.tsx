@@ -16,12 +16,13 @@ const Navbar = () => {
   return (
     <>
       <div className="h-(--navbar-height) w-full flex justify-between items-center border-b-2 border-b-border">
-        <Link to='/home'>
-        <img
-          src="https://pngimg.com/d/triangle_PNG102.png"
-          alt="Delta"
-          className="h-12 w-12"
-        /></Link>
+        <Link to="/home">
+          <img
+            src="https://pngimg.com/d/triangle_PNG102.png"
+            alt="Delta"
+            className="h-12 w-12"
+          />
+        </Link>
 
         <button
           type="button"
