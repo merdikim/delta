@@ -1,5 +1,8 @@
+import BridgeModal from '#/components/modals/BridgeModal'
+import SuccessModal from '#/components/modals/SuccessModal'
 import Navbar from '#/components/Navbar'
 import { createGoal, goalsQueryOptions } from '#/integrations/goals/goals'
+import { getComposerQuote } from '#/integrations/lifi/composer'
 import { Button } from '#/components/ui/button'
 import {
   Card,
@@ -9,33 +12,75 @@ import {
   CardTitle,
 } from '#/components/ui/card'
 import {
+  depositToVault,
   earnVaultsQueryOptions,
 } from '#/integrations/lifi/earn'
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
-import { useState, type FormEvent } from 'react'
+import type { FormEvent } from 'react'
+import { useState } from 'react'
 import { Coins, Landmark, TrendingUp } from 'lucide-react'
 import type { EarnVault } from '#/types'
-import { formatCompactUsd, formatPercent, formatUsd } from '#/utils'
+import { BASE_CHAIN_ID, BASE_USDC_ADDRESS, confettiPieces, formatCompactUsd, formatPercent, formatTokenBalance, formatUsd } from '#/utils'
 import { useNavigate } from '@tanstack/react-router'
-import { useAccount } from 'wagmi'
+import { useAccount, useBalance, useConfig } from 'wagmi'
+import { sendTransaction, switchChain} from '@wagmi/core'
+import { parseUnits } from 'viem'
+
 
 const NewGoalPage = () => {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { address } = useAccount()
-  const { data: vaults = [] } = useSuspenseQuery<EarnVault[]>(
+  const config = useConfig()
+  const { address, chainId } = useAccount()
+  const { data: allVaults = [] } = useSuspenseQuery<EarnVault[]>(
     earnVaultsQueryOptions(),
   )
+  const vaults = allVaults.filter((vault) => vault.isTransactional)
   const [goalName, setGoalName] = useState('')
   const [monthlyAmount, setMonthlyAmount] = useState('500')
   const [goalAmount, setGoalAmount] = useState('20000')
   const [selectedVaultIndex, setSelectedVaultIndex] = useState(0)
+  const [showSuccessState, setShowSuccessState] = useState(false)
+  const [isBridgeModalOpen, setIsBridgeModalOpen] = useState(false)
+  const balanceQuery = { enabled: Boolean(address), refetchInterval: 15_000 }
+
+  const usdcBaseBalance = useBalance({
+    address,
+    chainId: BASE_CHAIN_ID,
+    token: BASE_USDC_ADDRESS,
+    query: balanceQuery,
+  })
+
+  if (vaults.length === 0) {
+    return (
+      <main className="h-screen overflow-hidden px-4 sm:px-5 lg:px-6">
+        <div className="mx-auto flex h-full max-w-7xl flex-col">
+          <Navbar />
+
+          <div className="flex flex-1 items-center justify-center py-8">
+            <Card className="w-full max-w-xl rounded-3xl border-white/70 bg-white/85 py-0 text-center shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
+              <CardHeader className="px-6 pt-6">
+                <CardTitle className="text-xl text-slate-950">
+                  Deposits unavailable
+                </CardTitle>
+                <CardDescription className="text-sm leading-6 text-slate-600">
+                  LI.FI did not return any depositable vaults right now, so goal
+                  creation is temporarily paused until a supported protocol is
+                  available again.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          </div>
+        </div>
+      </main>
+    )
+  }
 
   const topVault = vaults[0]
   const selectedVault = vaults[selectedVaultIndex] ?? topVault
   const monthlyContribution = Number(monthlyAmount) || 0
   const targetAmount = Number(goalAmount) || 0
-  const selectedApy = selectedVault?.analytics.apy.total ?? 0
+  const selectedApy = selectedVault.analytics.apy.total
   const monthlyRate = selectedApy / 100 / 12
   const hasMonthlyAmountError =
     monthlyContribution > 0 &&
@@ -66,12 +111,47 @@ const NewGoalPage = () => {
   const totalDeposits = monthlyContribution * monthsToGoal
   const interestEarned = Math.max(projectedBalance - totalDeposits, 0)
   const yearsToGoal = monthsToGoal / 12
+  const depositAmount = monthlyContribution > 0 ? parseUnits(monthlyAmount, 6) : 0n
+  const baseUsdcBalance = usdcBaseBalance.data?.value
+  const missingBaseUsdc =
+    baseUsdcBalance === undefined || baseUsdcBalance >= depositAmount
+      ? 0n
+      : depositAmount - baseUsdcBalance
+  const hasInsufficientBaseUsdc =
+    monthlyContribution > 0 &&
+    baseUsdcBalance !== undefined &&
+    baseUsdcBalance < depositAmount
 
   const createGoalMutation = useMutation({
     mutationFn: async () => {
-      if (!address || !selectedVault) {
+      if (!address) {
         throw new Error('Wallet or vault missing')
       }
+
+      const fromAmount = parseUnits(monthlyAmount, 6).toString() // USDC decimals
+
+      const quote = await getComposerQuote({
+        data: {
+          fromChain: selectedVault.chainId,
+          toChain: selectedVault.chainId,
+          fromToken: BASE_USDC_ADDRESS,
+          toToken: selectedVault.address,
+          fromAddress: address,
+          toAddress: address,
+          fromAmount,
+        },
+      })
+
+      if (chainId !== selectedVault.chainId) {
+        await switchChain(config, { chainId: selectedVault.chainId })
+      }
+
+      const txHash = await depositToVault({
+        quote,
+        account: address,
+        chainId: selectedVault.chainId,
+        config,
+      })
 
       return createGoal({
         data: {
@@ -85,11 +165,15 @@ const NewGoalPage = () => {
       })
     },
     onSuccess: async () => {
+      setShowSuccessState(true)
+
       if (address) {
         await queryClient.invalidateQueries(goalsQueryOptions(address))
       }
 
-      await navigate({ to: '/home' })
+      window.setTimeout(() => {
+        void navigate({ to: '/home' })
+      }, 2000)
     },
   })
 
@@ -102,7 +186,8 @@ const NewGoalPage = () => {
       !goalName.trim() ||
       monthlyContribution <= 0 ||
       targetAmount <= 0 ||
-      hasMonthlyAmountError
+      hasMonthlyAmountError ||
+      hasInsufficientBaseUsdc
     ) {
       return
     }
@@ -112,6 +197,46 @@ const NewGoalPage = () => {
 
   return (
     <main className="h-screen overflow-hidden px-4 sm:px-5 lg:px-6">
+      <SuccessModal
+        isOpen={showSuccessState}
+        goalName={goalName}
+        confettiPieces={confettiPieces}
+      />
+      {/* <BridgeModal
+        isOpen={isBridgeModalOpen}
+        onClose={() => setIsBridgeModalOpen(false)}
+        missingBaseUsdc={missingBaseUsdc}
+        baseUsdcBalance={baseUsdcBalance}
+        formatTokenBalance={formatTokenBalance}
+        chainOptions={Object.entries(BRIDGEABLE_CHAINS).map(([id, chain]) => ({
+          id: Number(id),
+          label: chain.label,
+        }))}
+        selectedChainId={bridgeSourceChainId}
+        onSelectChain={setBridgeSourceChainId}
+        selectedChainLabel={selectedBridgeSourceChain.label}
+        isWalletOnSelectedChain={isWalletOnSelectedBridgeChain}
+        quote={bridgeQuoteQuery.data}
+        isQuoteLoading={bridgeQuoteQuery.isLoading}
+        quoteError={
+          bridgeQuoteQuery.error instanceof Error
+            ? bridgeQuoteQuery.error.message
+            : bridgeQuoteQuery.isError
+              ? 'Unable to load bridge details right now.'
+              : undefined
+        }
+        bridgeFeeAmount={bridgeFeeAmount}
+        bridgeGasAmount={bridgeGasAmount}
+        bridgeError={
+          bridgeMutation.error instanceof Error
+            ? bridgeMutation.error.message
+            : bridgeMutation.isError
+              ? 'Bridge failed. Please try again.'
+              : undefined
+        }
+        isBridgePending={bridgeMutation.isPending}
+        onConfirmBridge={() => void bridgeMutation.mutateAsync()}
+      /> */}
       <div className="mx-auto flex h-full max-w-7xl flex-col">
         <Navbar />
 
@@ -194,6 +319,24 @@ const NewGoalPage = () => {
                     </p>
                   ) : null}
 
+                  {hasInsufficientBaseUsdc ? (
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+                      <p className="font-medium">Insufficient Base USDC balance</p>
+                      <p className="my-1 leading-5">
+                        You have {formatTokenBalance(baseUsdcBalance, 6)} USDC on
+                        Base, but this deposit needs {formatTokenBalance(depositAmount, 6)} USDC.
+                      </p>
+                      
+                      <Button
+                        type="button"
+                        className="mt-2 w-full"
+                        //onClick={openBridgeModal}
+                      >
+                        Bridge before continuing
+                      </Button>
+                    </div>
+                  ) : null}
+
                   <div className="rounded-2xl border border-emerald-100 bg-emerald-50/80 p-3 text-sm text-emerald-900">
                     <div className="flex items-start gap-2.5">
                       <TrendingUp className="mt-0.5 size-4 shrink-0" />
@@ -208,26 +351,30 @@ const NewGoalPage = () => {
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-2 pt-1 sm:flex-row">
+                  <div className="flex flex-col gap-2 pt-1 md:flex-row md:items-center">
                     <Button
                       type="submit"
                       size="lg"
-                      className="h-10 w-full rounded-xl bg-slate-950 px-5 text-white hover:bg-slate-800"
+                      className="h-10 w-full rounded-xl bg-slate-950 px-5 text-white hover:bg-slate-800 md:flex-1"
                       disabled={
                         createGoalMutation.isPending ||
                         !address ||
                         !goalName.trim() ||
                         monthlyContribution <= 0 ||
                         targetAmount <= 0 ||
-                        hasMonthlyAmountError
+                        hasMonthlyAmountError ||
+                        hasInsufficientBaseUsdc
                       }
                     >
-                      {createGoalMutation.isPending ? 'Creating...' : 'Create Goal'}
+                      {createGoalMutation.isPending
+                        ? 'Depositing and creating...'
+                        : 'Deposit and create goal'}
                     </Button>
                   </div>
                 </form>
               </CardContent>
             </Card>
+
           </section>
 
           <section className="min-h-0 space-y-4">
@@ -310,8 +457,7 @@ const NewGoalPage = () => {
                     {hasReachableProjection ? `${monthsToGoal} months` : '--'}
                   </p>
                   <p className="mt-1.5 text-sm text-slate-600">
-                    Using {selectedVault?.protocol.name ?? 'selected protocol'} at{' '}
-                    {formatPercent(selectedApy)} APY
+                    Using {selectedVault.protocol.name} at {formatPercent(selectedApy)} APY
                   </p>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">

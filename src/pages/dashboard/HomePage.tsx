@@ -40,7 +40,7 @@ const HomePage = () => {
               </div>
             ) : (
               <div className="p-5">
-                <div className="rounded-[2rem] bg-slate-950 p-6 text-white shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
+                <div className="rounded-4xl bg-slate-950 p-6 text-white shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
                   <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">
                     <Sparkles className="size-3.5" />
                     Fresh start
@@ -112,7 +112,7 @@ const HomePage = () => {
         </div>
 
         <div className="hidden flex-1 lg:block">
-          <div className="flex h-full items-center justify-center rounded-[2rem] border border-white/70 bg-white/45 shadow-[0_18px_50px_rgba(15,23,42,0.05)] backdrop-blur">
+          <div className="flex h-full items-center justify-center rounded-4xl border border-white/70 bg-white/45 shadow-[0_18px_50px_rgba(15,23,42,0.05)] backdrop-blur">
             {goals.length ? (
               <div className="text-sm text-slate-500">
                 Select a goal to see more detail.
