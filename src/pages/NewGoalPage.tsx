@@ -48,8 +48,8 @@ const NewGoalPage = () => {
   )
   const vaults = allVaults.filter((vault) => vault.isTransactional)
   const [goalName, setGoalName] = useState('')
-  const [currentAmount, setCurrentAmount] = useState('500')
-  const [goalAmount, setGoalAmount] = useState('20000')
+  const [currentAmount, setCurrentAmount] = useState()
+  const [goalAmount, setGoalAmount] = useState()
   const [selectedVaultIndex, setSelectedVaultIndex] = useState(0)
   const [showSuccessState, setShowSuccessState] = useState(false)
   const [isBridgeModalOpen, setIsBridgeModalOpen] = useState(false)
@@ -254,7 +254,7 @@ const NewGoalPage = () => {
                   Goal details
                 </CardTitle>
                 <CardDescription className="text-sm leading-5 text-slate-600">
-                  Fill in the core numbers that shape your savings plan.
+                  Fill in the core numbers that shape your plan.
                 </CardDescription>
               </CardHeader>
 

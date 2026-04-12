@@ -39,7 +39,7 @@ export default function SuccessModal({
           }}
         />
       ))}
-      <div className="relative w-full max-w-md rounded-[2rem] border border-white/70 bg-white/90 p-8 text-center shadow-[0_24px_80px_rgba(15,23,42,0.20)]">
+      <div className="relative w-full max-w-md rounded-4xl border border-white/70 bg-white/90 p-8 text-center shadow-[0_24px_80px_rgba(15,23,42,0.20)]">
         <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
           <Check className="size-8" />
         </div>

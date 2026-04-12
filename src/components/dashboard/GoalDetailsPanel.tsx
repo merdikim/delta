@@ -5,7 +5,7 @@ import { depositToVault, earnPortfolioPositionsQueryOptions } from '#/integratio
 import type { EarnPortfolioPosition, EarnVault, Goal } from '#/types'
 import { BASE_CHAIN_ID, BASE_USDC_ADDRESS, formatDate, formatUsd, truncate } from '#/utils'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { CalendarDays, Landmark, Plus, Wallet } from 'lucide-react'
+import { CalendarDays, Coins, Plus } from 'lucide-react'
 import type { FormEvent } from 'react'
 import { useState } from 'react'
 import { switchChain } from '@wagmi/core'
@@ -51,26 +51,12 @@ export default function GoalDetailsPanel({
   const [depositAmount, setDepositAmount] = useState('0')
   const currentAmount = goal?.currentAmount ?? 0
   const targetAmount = goal?.goalAmount ?? 0
-  const chartWidth = 720
-  const chartHeight = 240
-  const paddingX = 22
-  const paddingTop = 20
-  const paddingBottom = 32
-  const innerWidth = chartWidth - paddingX * 2
-  const innerHeight = chartHeight - paddingTop - paddingBottom
   const depositsAscending = [...(goal?.deposits ?? [])].reverse()
-  const depositBars = depositsAscending.map((deposit, index) => ({
-    ...deposit,
-    cumulativeAmount: depositsAscending
-      .slice(0, index + 1)
-      .reduce((total, entry) => total + entry.amount, 0),
-  }))
-  const hasDepositsChart = depositBars.length > 0
-  const peakBalance = Math.max(targetAmount, currentAmount, 1)
-  const targetLineY =
-    paddingTop + innerHeight - (targetAmount / peakBalance) * innerHeight
-  const progressPercent =
-    targetAmount > 0 ? Math.min((currentAmount / targetAmount) * 100, 100) : 0
+  const hasDepositsChart = depositsAscending.length > 0
+  const outerRadius = 72
+  const innerRadius = 52
+  const outerCircumference = 2 * Math.PI * outerRadius
+  const innerCircumference = 2 * Math.PI * innerRadius
 
   const normalizedGoalProtocol = normalize(goal?.selectedProtocol)
   const normalizedVaultName = normalize(goal?.selectedVaultName)
@@ -98,12 +84,15 @@ export default function GoalDetailsPanel({
     (total, position) => total + Number(position.balanceUsd || 0),
     0,
   )
+  const depositsProgressPercent =
+    targetAmount > 0 ? Math.min((currentAmount / targetAmount) * 100, 100) : 0
+  const trackedValue = Math.max(totalPositionUsd, currentAmount)
+  const trackedProgressPercent =
+    targetAmount > 0 ? Math.min((trackedValue / targetAmount) * 100, 100) : 0
+  const yieldEarned = Math.max(trackedValue - currentAmount, 0)
+  const trackedStroke = (trackedProgressPercent / 100) * outerCircumference
+  const depositsStroke = (depositsProgressPercent / 100) * innerCircumference
   const remainingToTarget = Math.max(targetAmount - totalPositionUsd, 0)
-  const chartLabel = hasDepositsChart
-    ? `${goal?.deposits.length ?? 0} recorded deposit${goal?.deposits.length === 1 ? '' : 's'}`
-    : 'No deposits recorded'
-  const positionsLabel =
-    matchingPositions.length > 0 ? 'Vault positions' : 'Wallet positions'
   const hasSelectedVault = Boolean(vault)
   const depositAmountNumber = Number(depositAmount) || 0
 
@@ -232,7 +221,7 @@ export default function GoalDetailsPanel({
                 value={formatUsd(currentAmount)}
               />
               <StatCard
-                label="Yield source"
+                label="Yield"
                 value={`${yieldPercent.toFixed(2)}% APY`}
               />
               <StatCard
@@ -243,145 +232,126 @@ export default function GoalDetailsPanel({
 
             <div className="mt-5 flex flex-wrap items-center gap-3 text-sm text-slate-500">
               <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5">
-                <Wallet className="size-3.5" />
-                {truncate(goal.walletAddress, 6)}
-              </div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5">
                 <CalendarDays className="size-3.5" />
                 Created {formatDate(goal.createdAt)}
               </div>
               <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5">
-                <Landmark className="size-3.5" />
+                <Coins className="size-3.5" />
                 Remaining {formatUsd(remainingToTarget)}
               </div>
             </div>
           </div>
 
           <div className="grid flex-1 gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.75fr)]">
-            <section className="rounded-4xl border border-white/70 bg-white/80 p-5 shadow-[0_14px_38px_rgba(15,23,42,0.06)]">
+            <section className="rounded-4xl border border-white/70 bg-white/80 self-start p-5 shadow-[0_14px_38px_rgba(15,23,42,0.06)]">
               <div className="flex items-end justify-between gap-4">
                 <div>
                   <p className="text-sm font-medium text-slate-500">
                     Deposit progress
                   </p>
-                  <p className="mt-2 text-2xl font-semibold text-slate-950">
-                    {chartLabel}
-                  </p>
-                </div>
-                <div className="rounded-2xl bg-slate-50 px-4 py-3 text-right">
-                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">
-                    Goal progress
-                  </p>
-                  <p className="mt-2 text-lg font-semibold text-emerald-700">
-                    {progressPercent.toFixed(0)}%
-                  </p>
                 </div>
               </div>
 
-              <div className="mt-5 overflow-hidden rounded-3xl border border-emerald-100 bg-[linear-gradient(180deg,rgba(236,253,245,0.92),rgba(255,255,255,0.95))] p-4">
+              <div className="mt-5 overflow-hidden rounded-3xl border border-emerald-100 p-4">
                 {hasDepositsChart ? (
-                  <svg
-                    viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-                    className="h-64 w-full"
-                    role="img"
-                    aria-label="Cumulative deposited amount compared with target amount"
-                  >
-                    <line
-                      x1={paddingX}
-                      y1={paddingTop + innerHeight}
-                      x2={paddingX + innerWidth}
-                      y2={paddingTop + innerHeight}
-                      stroke="#cbd5e1"
-                      strokeWidth="1.5"
-                    />
-                    <line
-                      x1={paddingX}
-                      y1={paddingTop}
-                      x2={paddingX}
-                      y2={paddingTop + innerHeight}
-                      stroke="#cbd5e1"
-                      strokeWidth="1.5"
-                    />
-                    <line
-                      x1={paddingX}
-                      y1={targetLineY}
-                      x2={paddingX + innerWidth}
-                      y2={targetLineY}
-                      stroke="#f59e0b"
-                      strokeWidth="2"
-                      strokeDasharray="6 6"
-                    />
-                    {depositBars.map((deposit, index) => {
-                      const columnWidth =
-                        innerWidth / Math.max(depositBars.length, 1)
-                      const barWidth = Math.max(columnWidth - 18, 18)
-                      const x =
-                        paddingX +
-                        index * columnWidth +
-                        (columnWidth - barWidth) / 2
-                      const barHeight =
-                        (deposit.cumulativeAmount / peakBalance) * innerHeight
-                      const y = paddingTop + innerHeight - barHeight
-
-                      return (
-                        <g key={deposit.id}>
-                          <rect
-                            x={x}
-                            y={y}
-                            width={barWidth}
-                            height={Math.max(barHeight, 4)}
-                            rx="10"
-                            fill="#10b981"
-                            opacity={index === depositBars.length - 1 ? '1' : '0.72'}
-                          />
-                          <text
-                            x={x + barWidth / 2}
-                            y={Math.max(y - 8, paddingTop)}
-                            textAnchor="middle"
-                            fill="#065f46"
-                            fontSize="11"
-                          >
-                            {formatUsd(deposit.cumulativeAmount)}
-                          </text>
-                        </g>
-                      )
-                    })}
-                    {depositBars.map((deposit, index) => {
-                      const columnWidth =
-                        innerWidth / Math.max(depositBars.length, 1)
-                      const x = paddingX + index * columnWidth + columnWidth / 2
-
-                      return (
+                  <div className="grid items-center gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
+                    <div className="flex justify-center">
+                      <svg
+                        viewBox="0 0 200 200"
+                        className="h-52 w-52"
+                        role="img"
+                        aria-label="Current deposits and deposits plus yield toward target amount"
+                      >
+                        <circle
+                          cx="100"
+                          cy="100"
+                          r={outerRadius}
+                          fill="none"
+                          stroke="#dbeafe"
+                          strokeWidth="16"
+                        />
+                        <circle
+                          cx="100"
+                          cy="100"
+                          r={outerRadius}
+                          fill="none"
+                          stroke="#0ea5e9"
+                          strokeWidth="16"
+                          strokeLinecap="round"
+                          strokeDasharray={`${trackedStroke} ${outerCircumference}`}
+                          transform="rotate(-90 100 100)"
+                        />
+                        <circle
+                          cx="100"
+                          cy="100"
+                          r={innerRadius}
+                          fill="none"
+                          stroke="#d1fae5"
+                          strokeWidth="16"
+                        />
+                        <circle
+                          cx="100"
+                          cy="100"
+                          r={innerRadius}
+                          fill="none"
+                          stroke="#10b981"
+                          strokeWidth="16"
+                          strokeLinecap="round"
+                          strokeDasharray={`${depositsStroke} ${innerCircumference}`}
+                          transform="rotate(-90 100 100)"
+                        />
+                        <circle cx="100" cy="100" r="36" fill="white" />
                         <text
-                          key={`${deposit.id}-label`}
-                          x={x}
-                          y={chartHeight - 8}
+                          x="100"
+                          y="90"
                           textAnchor="middle"
                           fill="#64748b"
-                          fontSize="12"
+                          fontSize="11"
                         >
-                          {index + 1}
+                          Deposits
                         </text>
-                      )
-                    })}
-                    <text
-                      x={paddingX}
-                      y={paddingTop + 12}
-                      fill="#64748b"
-                      fontSize="12"
-                    >
-                      Deposit #
-                    </text>
-                    <text
-                      x={paddingX + innerWidth - 4}
-                      y={targetLineY - 8}
-                      textAnchor="end"
-                      fill="#b45309"
-                      fontSize="12"
-                    >
-                      Target {formatUsd(targetAmount)}
-                    </text>
-                  </svg>
+                        <text
+                          x="100"
+                          y="112"
+                          textAnchor="middle"
+                          fill="#0f172a"
+                          fontSize="22"
+                          fontWeight="700"
+                        >
+                          {depositsProgressPercent.toFixed(0)}%
+                        </text>
+                      </svg>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex flex-col gap-3">
+                        <div className="rounded-2xl h-12 border flex justify-between items-center border-slate-200 bg-slate-50/80 px-4">
+                          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
+                            Target amount
+                          </p>
+                          <p className="mt-2 text-sm text-slate-950">
+                            {formatUsd(targetAmount)}
+                          </p>
+                        </div>
+                        <div className="rounded-2xl h-12 border flex justify-between items-center border-slate-200 bg-slate-50/80 px-4">
+                          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
+                            Remaining
+                          </p>
+                          <p className="mt-2 text-sm text-slate-950">
+                            {formatUsd(Math.max(targetAmount - trackedValue, 0))}
+                          </p>
+                        </div>
+                        <div className="rounded-2xl h-12 border flex justify-between items-center border-slate-200 bg-slate-50/80 px-4">
+                          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-500">
+                            Yield earned
+                          </p>
+                          <p className="text-sm text-slate-950">
+                            {formatUsd(yieldEarned)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 ) : (
                   <div className="flex h-64 flex-col items-center justify-center text-center">
                     <p className="text-base font-medium text-slate-700">
@@ -394,26 +364,19 @@ export default function GoalDetailsPanel({
                   </div>
                 )}
               </div>
+              <div className='w-full flex items-center justify-center gap-6 pt-4'>
+                <div className='flex items-center'>Current deposits <div className='h-3 w-3 ml-2 bg-[#10b981]'></div></div>
+                <div className='flex items-center'><div className='h-3 w-3 mr-2 bg-[#0ea5e9]'></div> Current deposits + yield </div>
+              </div>
             </section>
 
             <section className="flex flex-col rounded-4xl border border-white/70 bg-white/80 p-5 shadow-[0_14px_38px_rgba(15,23,42,0.06)]">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-sm font-medium text-slate-500">
-                    {positionsLabel}
+                    Deposits({goal.deposits.length})
                   </p>
-                  {/* <p className="mt-2 text-2xl font-semibold text-slate-950">
-                    {formatUsd(totalPositionUsd)}
-                  </p> */}
                 </div>
-                {/* <div className="rounded-2xl bg-slate-50 px-4 py-3 text-right">
-                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">
-                    Positions
-                  </p>
-                  <p className="mt-2 text-base font-semibold text-slate-950">
-                    {displayedPositions.length}
-                  </p>
-                </div> */}
               </div>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">

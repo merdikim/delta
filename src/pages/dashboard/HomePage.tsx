@@ -81,7 +81,7 @@ const HomePage = () => {
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold text-slate-950">Goals</h2>
             <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-medium text-slate-600 shadow-sm">
-              {goals.length} active
+              {goals.length} total
             </span>
           </div>
           <div
