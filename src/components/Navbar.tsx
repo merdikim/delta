@@ -1,39 +1,51 @@
 import { Button } from '#/components/ui/button'
+import { DEFAULT_PROFILE, truncate } from '#/utils'
 import { Link } from '@tanstack/react-router'
-import { X } from 'lucide-react'
-import { useState } from 'react'
-import { useAccount, useDisconnect } from 'wagmi'
+import { LoaderCircle, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useAccount, useDisconnect, useEnsAvatar, useEnsName } from 'wagmi'
 
 const Navbar = () => {
   const { address } = useAccount()
   const { disconnect } = useDisconnect()
+  const { data:ensName } = useEnsName({ address, chainId:1 })
+  const { data: ensAvatar } = useEnsAvatar({ name:ensName, chainId: 1 })
   const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [isLoadingProfileImage, setIsLoadingProfileImage] = useState(true)
+  const profileImageSrc = ensAvatar ?? DEFAULT_PROFILE
 
-  const shortAddress = address
-    ? `${address.slice(0, 6)}...${address.slice(-4)}`
-    : 'Wallet not connected'
+  useEffect(() => {
+    setIsLoadingProfileImage(true)
+  }, [profileImageSrc])
 
   return (
     <>
       <div className="h-(--navbar-height) w-full flex justify-between items-center border-b-2 border-b-border">
         <Link to="/home">
           <img
-            src="https://pngimg.com/d/triangle_PNG102.png"
+            src="https://w7.pngwing.com/pngs/219/153/png-transparent-delta-circle-mathematics-greek-alphabet-symbol-circle-text-logo-number.png"
             alt="Delta"
-            className="h-12 w-12"
+            className="h-8 w-8"
           />
         </Link>
 
         <button
           type="button"
           onClick={() => setIsProfileOpen(true)}
-          className="overflow-hidden rounded-full border border-border transition hover:scale-[1.02] hover:shadow-md"
+          className="relative overflow-hidden rounded-full border border-border transition hover:scale-[1.02] hover:shadow-md"
           aria-label="Open wallet menu"
         >
+          {isLoadingProfileImage ? (
+            <div className="absolute inset-0 flex items-center justify-center bg-white/80">
+              <LoaderCircle className="size-4 animate-spin text-slate-500" />
+            </div>
+          ) : null}
           <img
-            src="https://upload.wikimedia.org/wikipedia/commons/9/99/Sample_User_Icon.png"
+            src={profileImageSrc}
             alt={address}
-            className="h-12 w-12 rounded-full object-cover"
+            className="h-8 w-8 rounded-full object-cover"
+            onLoad={() => setIsLoadingProfileImage(false)}
+            onError={() => setIsLoadingProfileImage(false)}
           />
         </button>
       </div>
@@ -60,25 +72,28 @@ const Navbar = () => {
 
             <div className="mt-6 rounded-3xl bg-slate-50 p-4">
               <div className="flex items-center gap-4">
-                <img
-                  src="https://upload.wikimedia.org/wikipedia/commons/9/99/Sample_User_Icon.png"
-                  alt={address}
-                  className="h-14 w-14 rounded-full border border-slate-200 object-cover"
-                />
+                <div className="relative h-14 w-14 overflow-hidden rounded-full border border-slate-200">
+                  {isLoadingProfileImage ? (
+                    <div className="absolute inset-0 flex items-center justify-center bg-white/80">
+                      <LoaderCircle className="size-5 animate-spin text-slate-500" />
+                    </div>
+                  ) : null}
+                  <img
+                    src={profileImageSrc}
+                    alt={address}
+                    className="h-14 w-14 rounded-full object-cover"
+                    onLoad={() => setIsLoadingProfileImage(false)}
+                    onError={() => setIsLoadingProfileImage(false)}
+                  />
+                </div>
                 <div className="min-w-0">
                   <p className="text-sm text-slate-500">Connected address</p>
                   <p className="truncate text-base font-semibold text-slate-950">
-                    {shortAddress}
+                    {ensName?? truncate(address!, 6)}
                   </p>
                 </div>
               </div>
             </div>
-
-            <p className="mt-4 text-sm leading-6 text-slate-600">
-              Disconnect this wallet to lock protected routes until a wallet is
-              connected again.
-            </p>
-
             <div className="mt-6 flex gap-3">
               <Button
                 type="button"
