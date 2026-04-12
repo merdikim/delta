@@ -68,8 +68,8 @@ const HomePage = () => {
   const activeGoal = selectedGoal ?? goals[0]
   const activeGoalVault = vaults.find(
     (vault) =>
-      vault.name === activeGoal.selectedVaultName &&
-      vault.protocol.name === activeGoal.selectedProtocol,
+      vault.name === activeGoal?.selectedVaultName &&
+      vault.protocol.name === activeGoal?.selectedProtocol,
   )
   const activeGoalYieldPercent = activeGoalVault?.analytics.apy.total ?? 0
 
@@ -136,7 +136,7 @@ const HomePage = () => {
                             Define the target
                           </p>
                           <p className="text-xs text-slate-400">
-                            Name the goal and set your amount.
+                            Name the goal and set the current amount.
                           </p>
                         </div>
                       </div>

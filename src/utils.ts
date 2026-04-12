@@ -150,3 +150,5 @@ export function truncate(
 
   return `${value.slice(0, length)}...${value.slice(-length)}`
 }
+
+export const DEFAULT_PROFILE = "https://upload.wikimedia.org/wikipedia/commons/9/99/Sample_User_Icon.png"

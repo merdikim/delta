@@ -1,11 +1,19 @@
+export type GoalDeposit = {
+  id: string
+  amount: number
+  txHash: string
+  createdAt: string
+}
+
 export type Goal = {
   id: string
   walletAddress: string
   name: string
-  monthlyAmount: number
+  currentAmount: number
   goalAmount: number
   selectedVaultName?: string
   selectedProtocol?: string
+  deposits: GoalDeposit[]
   createdAt: string
   updatedAt: string
 }

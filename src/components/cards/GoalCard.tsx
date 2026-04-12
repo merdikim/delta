@@ -65,11 +65,11 @@ const GoalCard: FC<{
             <div className="flex items-center gap-2 text-slate-500">
               <Coins className="size-3" />
               <span className="text-[11px] font-medium uppercase tracking-[0.12em]">
-                Initial
+                Current
               </span>
             </div>
             <p className="mt-1.5 text-base font-semibold text-slate-950">
-              {formatUsd(goal.monthlyAmount)}
+              {formatUsd(goal.currentAmount)}
             </p>
           </div>
         </div>

@@ -2,21 +2,15 @@ import { Button } from '#/components/ui/button'
 import { DEFAULT_PROFILE, truncate } from '#/utils'
 import { Link } from '@tanstack/react-router'
 import { LoaderCircle, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useAccount, useDisconnect, useEnsAvatar, useEnsName } from 'wagmi'
 
 const Navbar = () => {
   const { address } = useAccount()
   const { disconnect } = useDisconnect()
   const { data:ensName } = useEnsName({ address, chainId:1 })
-  const { data: ensAvatar } = useEnsAvatar({ name:ensName, chainId: 1 })
+  const { data: ensAvatar, isLoading:isLoadingProfileImage } = useEnsAvatar({ name:ensName || "", chainId: 1 })
   const [isProfileOpen, setIsProfileOpen] = useState(false)
-  const [isLoadingProfileImage, setIsLoadingProfileImage] = useState(true)
-  const profileImageSrc = ensAvatar ?? DEFAULT_PROFILE
-
-  useEffect(() => {
-    setIsLoadingProfileImage(true)
-  }, [profileImageSrc])
 
   return (
     <>
@@ -41,11 +35,9 @@ const Navbar = () => {
             </div>
           ) : null}
           <img
-            src={profileImageSrc}
+            src={ensAvatar ?? DEFAULT_PROFILE}
             alt={address}
             className="h-8 w-8 rounded-full object-cover"
-            onLoad={() => setIsLoadingProfileImage(false)}
-            onError={() => setIsLoadingProfileImage(false)}
           />
         </button>
       </div>
@@ -79,11 +71,9 @@ const Navbar = () => {
                     </div>
                   ) : null}
                   <img
-                    src={profileImageSrc}
+                    src={ensAvatar ?? DEFAULT_PROFILE}
                     alt={address}
                     className="h-14 w-14 rounded-full object-cover"
-                    onLoad={() => setIsLoadingProfileImage(false)}
-                    onError={() => setIsLoadingProfileImage(false)}
                   />
                 </div>
                 <div className="min-w-0">

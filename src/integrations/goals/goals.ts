@@ -11,15 +11,23 @@ const walletAddressSchema = z.object({
 const createGoalSchema = z.object({
   walletAddress: z.string().min(1),
   name: z.string().min(1),
-  monthlyAmount: z.number().nonnegative(),
+  currentAmount: z.number().positive(),
   goalAmount: z.number().positive(),
   selectedVaultName: z.string().optional(),
   selectedProtocol: z.string().optional(),
+  txHash: z.string().min(1),
 })
 
 const deleteGoalSchema = z.object({
   id: z.string().min(1),
   walletAddress: z.string().min(1),
+})
+
+const addGoalDepositSchema = z.object({
+  goalId: z.string().min(1),
+  walletAddress: z.string().min(1),
+  amount: z.number().positive(),
+  txHash: z.string().min(1),
 })
 
 function mapGoal(goal: {
@@ -30,17 +38,34 @@ function mapGoal(goal: {
   goalAmount: { toString: () => string }
   selectedVaultName: string | null
   selectedProtocol: string | null
+  deposits: Array<{
+    id: string
+    amount: { toString: () => string }
+    txHash: string
+    createdAt: Date
+  }>
   createdAt: Date
   updatedAt: Date
 }): Goal {
+  const deposits = goal.deposits.map((deposit) => ({
+    id: deposit.id,
+    amount: Number(deposit.amount.toString()),
+    txHash: deposit.txHash,
+    createdAt: deposit.createdAt.toISOString(),
+  }))
+
   return {
     id: goal.id,
     walletAddress: goal.walletAddress,
     name: goal.name,
-    monthlyAmount: Number(goal.monthlyAmount.toString()),
+    currentAmount:
+      deposits.length > 0
+        ? deposits.reduce((total, deposit) => total + deposit.amount, 0)
+        : Number(goal.monthlyAmount.toString()),
     goalAmount: Number(goal.goalAmount.toString()),
     selectedVaultName: goal.selectedVaultName ?? undefined,
     selectedProtocol: goal.selectedProtocol ?? undefined,
+    deposits,
     createdAt: goal.createdAt.toISOString(),
     updatedAt: goal.updatedAt.toISOString(),
   }
@@ -53,6 +78,11 @@ export const listGoals = createServerFn({ method: 'GET' })
   .handler(async ({ data }): Promise<Goal[]> => {
     const goals = await prisma.goal.findMany({
       where: { walletAddress: data.walletAddress },
+      include: {
+        deposits: {
+          orderBy: { createdAt: 'desc' },
+        },
+      },
       orderBy: { createdAt: 'desc' },
     })
 
@@ -66,10 +96,56 @@ export const createGoal = createServerFn({ method: 'POST' })
       data: {
         walletAddress: data.walletAddress,
         name: data.name,
-        monthlyAmount: data.monthlyAmount.toFixed(2),
+        monthlyAmount: data.currentAmount.toFixed(2),
         goalAmount: data.goalAmount.toFixed(2),
         selectedVaultName: data.selectedVaultName,
         selectedProtocol: data.selectedProtocol,
+        deposits: {
+          create: {
+            amount: data.currentAmount.toFixed(2),
+            txHash: data.txHash,
+          },
+        },
+      },
+      include: {
+        deposits: {
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+    })
+
+    return mapGoal(goal)
+  })
+
+export const addGoalDeposit = createServerFn({ method: 'POST' })
+  .inputValidator((input) => addGoalDepositSchema.parse(input))
+  .handler(async ({ data }): Promise<Goal> => {
+    const existingGoal = await prisma.goal.findFirst({
+      where: {
+        id: data.goalId,
+        walletAddress: data.walletAddress,
+      },
+      select: { id: true },
+    })
+
+    if (!existingGoal) {
+      throw new Error('Goal not found')
+    }
+
+    const goal = await prisma.goal.update({
+      where: { id: data.goalId },
+      data: {
+        deposits: {
+          create: {
+            amount: data.amount.toFixed(2),
+            txHash: data.txHash,
+          },
+        },
+      },
+      include: {
+        deposits: {
+          orderBy: { createdAt: 'desc' },
+        },
       },
     })
 

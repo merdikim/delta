@@ -48,7 +48,7 @@ const NewGoalPage = () => {
   )
   const vaults = allVaults.filter((vault) => vault.isTransactional)
   const [goalName, setGoalName] = useState('')
-  const [initialAmount, setInitialAmount] = useState('500')
+  const [currentAmount, setCurrentAmount] = useState('500')
   const [goalAmount, setGoalAmount] = useState('20000')
   const [selectedVaultIndex, setSelectedVaultIndex] = useState(0)
   const [showSuccessState, setShowSuccessState] = useState(false)
@@ -89,19 +89,19 @@ const NewGoalPage = () => {
 
   const topVault = vaults[0]
   const selectedVault = vaults[selectedVaultIndex] ?? topVault
-  const initialContribution = Number(initialAmount) || 0
+  const currentAmountValue = Number(currentAmount) || 0
   const targetAmount = Number(goalAmount) || 0
   const selectedApy = selectedVault.analytics.apy.total
   const monthlyRate = selectedApy / 100 / 12
 
-  let projectedBalance = initialContribution
+  let projectedBalance = currentAmountValue
   let monthsToGoal = 0
   const maxProjectionMonths = 600
 
   while (
     projectedBalance < targetAmount &&
     monthsToGoal < maxProjectionMonths &&
-    initialContribution > 0 &&
+    currentAmountValue > 0 &&
     targetAmount > 0
   ) {
     projectedBalance = projectedBalance * (1 + monthlyRate)
@@ -110,21 +110,21 @@ const NewGoalPage = () => {
 
   const hasReachableProjection =
     targetAmount > 0 &&
-    initialContribution > 0 &&
+    currentAmountValue > 0 &&
     projectedBalance >= targetAmount
 
-  const totalDeposits = initialContribution
-  const interestEarned = Math.max(projectedBalance - initialContribution, 0)
+  const totalDeposits = currentAmountValue
+  const interestEarned = Math.max(projectedBalance - currentAmountValue, 0)
   const yearsToGoal = monthsToGoal / 12
   const depositAmount =
-    initialContribution > 0 ? parseUnits(initialAmount, 6) : 0n
+    currentAmountValue > 0 ? parseUnits(currentAmount, 6) : 0n
   const baseUsdcBalance = usdcBaseBalance.data?.value
   const missingBaseUsdc =
     baseUsdcBalance === undefined || baseUsdcBalance >= depositAmount
       ? 0n
       : depositAmount - baseUsdcBalance
   const hasInsufficientBaseUsdc =
-    initialContribution > 0 &&
+    currentAmountValue > 0 &&
     baseUsdcBalance !== undefined &&
     baseUsdcBalance < depositAmount
 
@@ -134,7 +134,7 @@ const NewGoalPage = () => {
         throw new Error('Wallet or vault missing')
       }
 
-      const fromAmount = parseUnits(initialAmount, 6).toString()
+      const fromAmount = parseUnits(currentAmount, 6).toString()
 
       const quote = await getComposerQuote({
         data: {
@@ -163,10 +163,11 @@ const NewGoalPage = () => {
         data: {
           walletAddress: address,
           name: goalName.trim(),
-          monthlyAmount: initialContribution,
+          currentAmount: currentAmountValue,
           goalAmount: targetAmount,
           selectedVaultName: selectedVault.name,
           selectedProtocol: selectedVault.protocol.name,
+          txHash,
         },
       })
     },
@@ -190,7 +191,7 @@ const NewGoalPage = () => {
       createGoalMutation.isPending ||
       !address ||
       !goalName.trim() ||
-      initialContribution <= 0 ||
+      currentAmountValue <= 0 ||
       targetAmount <= 0 ||
       hasInsufficientBaseUsdc
     ) {
@@ -275,7 +276,7 @@ const NewGoalPage = () => {
                   <div className="grid gap-4 md:grid-cols-2">
                     <label className="grid gap-1.5">
                       <span className="text-sm font-medium text-slate-800">
-                        Initial amount
+                        Current amount
                       </span>
                       <div className="flex h-11 items-center rounded-xl border border-slate-200 bg-white px-4 transition focus-within:border-emerald-400 focus-within:ring-4 focus-within:ring-emerald-100">
                         <span className="mr-3 text-sm font-medium text-slate-500">
@@ -284,9 +285,9 @@ const NewGoalPage = () => {
                         <input
                           type="number"
                           placeholder="500"
-                          value={initialAmount}
+                          value={currentAmount}
                           onChange={(event) =>
-                            setInitialAmount(event.target.value)
+                            setCurrentAmount(event.target.value)
                           }
                           className="w-full bg-transparent text-sm text-slate-900 outline-none"
                         />
@@ -349,7 +350,7 @@ const NewGoalPage = () => {
                       <div>
                         <p className="font-medium">Planning tip</p>
                         <p className="mt-1 leading-5">
-                          A stronger starting deposit and better rates can help
+                          A stronger current amount and better rates can help
                           your balance compound to the goal faster.
                         </p>
                       </div>
@@ -365,7 +366,7 @@ const NewGoalPage = () => {
                         createGoalMutation.isPending ||
                         !address ||
                         !goalName.trim() ||
-                        initialContribution <= 0 ||
+                        currentAmountValue <= 0 ||
                         targetAmount <= 0 ||
                         hasInsufficientBaseUsdc
                       }
@@ -470,7 +471,7 @@ const NewGoalPage = () => {
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="rounded-xl border border-slate-200 p-3.5">
-                    <p className="text-sm text-slate-500">Initial deposit</p>
+                    <p className="text-sm text-slate-500">Current amount</p>
                     <p className="mt-1.5 text-lg font-semibold text-slate-900">
                       {formatUsd(totalDeposits)}
                     </p>
@@ -495,7 +496,7 @@ const NewGoalPage = () => {
                   <p className="mt-1 text-sm text-slate-600">
                     {hasReachableProjection
                       ? `Projected balance at target time: ${formatUsd(projectedBalance)}`
-                      : 'Enter a valid initial amount and goal amount to see the estimate.'}
+                      : 'Enter a valid current amount and goal amount to see the estimate.'}
                   </p>
                 </div>
               </CardContent>

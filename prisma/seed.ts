@@ -10,9 +10,10 @@ const prisma = new PrismaClient({ adapter })
 async function main() {
   console.log('🌱 Seeding database...')
 
+  await prisma.goalDeposit.deleteMany()
   await prisma.goal.deleteMany()
 
-  const goals = await prisma.goal.createMany({
+  const goals = await prisma.goal.createManyAndReturn({
     data: [
       {
         walletAddress: '0x1234567890abcdef1234567890abcdef12345678',
@@ -33,7 +34,22 @@ async function main() {
     ],
   })
 
-  console.log(`✅ Created ${goals.count} goals`)
+  await prisma.goalDeposit.createMany({
+    data: [
+      {
+        goalId: goals[0].id,
+        amount: '500.00',
+        txHash: '0xseedgoal1deposit1',
+      },
+      {
+        goalId: goals[1].id,
+        amount: '300.00',
+        txHash: '0xseedgoal2deposit1',
+      },
+    ],
+  })
+
+  console.log(`✅ Created ${goals.length} goals with deposits`)
 }
 
 main()

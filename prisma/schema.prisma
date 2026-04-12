@@ -15,8 +15,21 @@ model Goal {
   goalAmount        Decimal  @db.Decimal(18, 2)
   selectedVaultName String?
   selectedProtocol  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  deposits          GoalDeposit[]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   @@index([walletAddress, createdAt(sort: Desc)])
+}
+
+model GoalDeposit {
+  id        String   @id @default(cuid())
+  goalId    String
+  amount    Decimal  @db.Decimal(18, 2)
+  txHash    String
+  createdAt DateTime @default(now())
+  goal      Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@index([goalId, createdAt(sort: Desc)])
+  @@index([txHash])
 }
