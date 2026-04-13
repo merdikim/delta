@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react'
 import { useAccount } from 'wagmi'
 import { cn } from '#/lib/utils'
 import { ArrowRight, Goal as GoalIcon, Sparkles, Target } from 'lucide-react'
+import SectionBadge from '#/components/cards/SectionBadge'
 
 const HomePage = () => {
   const queryClient = useQueryClient()
@@ -109,18 +110,14 @@ const HomePage = () => {
                 ))}
               </div>
             ) : (
-              <div className="p-5">
-                <div className="rounded-4xl bg-slate-950 p-6 text-white shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
-                  <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">
-                    <Sparkles className="size-3.5" />
-                    Fresh start
-                  </div>
-
+              <div className="">
+                <div className="p-6  shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
+                  <SectionBadge text='Fresh start' badge={<Sparkles className="size-3.5" />}/> 
                   <h3 className="mt-4 text-2xl font-semibold leading-tight">
                     Your first goal can start with one clear first deposit.
                   </h3>
 
-                  <p className="mt-3 text-sm leading-6 text-slate-300">
+                  <p className="mt-3 text-sm leading-6 text-slate-800">
                     Create a goal, choose a yield source, and let Delta show you
                     how your deposits can compound toward a target.
                   </p>
@@ -132,10 +129,10 @@ const HomePage = () => {
                           <GoalIcon className="size-4" />
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-white">
+                          <p className="text-sm font-medium ">
                             Define the target
                           </p>
-                          <p className="text-xs text-slate-400">
+                          <p className="text-xs text-slate-800">
                             Name the goal and set the current amount.
                           </p>
                         </div>
@@ -148,10 +145,10 @@ const HomePage = () => {
                           <Target className="size-4" />
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-white">
+                          <p className="text-sm font-medium ">
                             Pick a live yield
                           </p>
-                          <p className="text-xs text-slate-400">
+                          <p className="text-xs text-slate-800">
                             Compare protocol APYs before you save.
                           </p>
                         </div>

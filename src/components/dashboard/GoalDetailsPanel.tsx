@@ -207,9 +207,6 @@ export default function GoalDetailsPanel({
       <div className="hidden flex-1 lg:block">
         <div className="flex h-full items-center justify-center rounded-4xl border border-white/70 bg-white/45 shadow-[0_18px_50px_rgba(15,23,42,0.05)] backdrop-blur">
           <div className="max-w-xl px-8 text-center">
-            <p className="text-sm font-medium uppercase tracking-[0.24em] text-emerald-700">
-              Goal planning
-            </p>
             <h3 className="mt-4 text-4xl font-semibold leading-tight text-slate-950">
               Turn a future purchase into a clear savings path.
             </h3>
