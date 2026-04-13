@@ -1,4 +1,5 @@
 import BridgeModal from '#/components/modals/BridgeModal'
+import CreateGoalPendingModal from '#/components/modals/CreateGoalPendingModal'
 import SuccessModal from '#/components/modals/SuccessModal'
 import Navbar from '#/components/Navbar'
 import { createGoal, goalsQueryOptions } from '#/integrations/goals/goals'
@@ -54,9 +55,12 @@ const NewGoalPage = () => {
   )
   const vaults = allVaults.filter((vault) => vault.isTransactional)
   const [goalName, setGoalName] = useState('')
-  const [currentAmount, setCurrentAmount] = useState()
-  const [goalAmount, setGoalAmount] = useState()
+  const [currentAmount, setCurrentAmount] = useState("")
+  const [goalAmount, setGoalAmount] = useState("")
   const [selectedVaultIndex, setSelectedVaultIndex] = useState(0)
+  const [goalCreationStage, setGoalCreationStage] = useState<
+    'idle' | 'txHash' | 'database'
+  >('idle')
   const [showSuccessState, setShowSuccessState] = useState(false)
   const [isBridgeModalOpen, setIsBridgeModalOpen] = useState(false)
   const balanceQuery = { enabled: Boolean(address), refetchInterval: 15_000 }
@@ -155,6 +159,8 @@ const NewGoalPage = () => {
         throw new Error('Wallet or vault missing')
       }
 
+      setGoalCreationStage('txHash')
+
       const fromAmount = parseUnits(currentAmount, 6).toString()
 
       const quote = await getComposerQuote({
@@ -180,6 +186,8 @@ const NewGoalPage = () => {
         config,
       })
 
+      setGoalCreationStage('database')
+
       return createGoal({
         data: {
           walletAddress: address,
@@ -203,6 +211,9 @@ const NewGoalPage = () => {
         void navigate({ to: '/home' })
       }, 2000)
     },
+    onSettled: () => {
+      setGoalCreationStage('idle')
+    },
   })
 
   const handleCreateGoal = async (event: FormEvent<HTMLFormElement>) => {
@@ -224,6 +235,13 @@ const NewGoalPage = () => {
 
   return (
     <main className="h-screen overflow-hidden px-4 sm:px-5 lg:px-6">
+      <CreateGoalPendingModal
+        isOpen={createGoalMutation.isPending}
+        isWaitingForTxHash={
+          createGoalMutation.isPending && goalCreationStage !== 'database'
+        }
+        isWaitingForDatabase={goalCreationStage === 'database'}
+      />
       <SuccessModal
         isOpen={showSuccessState}
         goalName={goalName}
@@ -410,7 +428,7 @@ const NewGoalPage = () => {
                   Protocol yields
                 </CardTitle>
                 <CardDescription className="text-sm leading-5 text-slate-700">
-                  Live vault data from LI.FI Earn for Base USDC, sorted by total
+                  Live vault data from LI.FI Earn, sorted by total
                   APY.
                 </CardDescription>
               </CardHeader>
@@ -464,64 +482,6 @@ const NewGoalPage = () => {
                 ))}
               </CardContent>
             </Card>
-
-            {/* <Card className="rounded-3xl border-white/70 bg-white/85 py-0 shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
-              <CardHeader className="px-5 pt-5 sm:px-6 sm:pt-6">
-                <CardTitle className="flex items-center gap-2 text-lg text-slate-950">
-                  <Coins className="size-4 text-emerald-700" />
-                  Time to goal
-                </CardTitle>
-              </CardHeader>
-
-              <CardContent className="grid gap-3 px-5 pb-5 sm:px-6 sm:pb-6">
-                <div className="rounded-xl bg-slate-50 p-3.5">
-                  <p className="text-sm text-slate-500">
-                    Estimated time to goal
-                  </p>
-                  <p className="mt-1.5 text-2xl font-semibold text-slate-950">
-                    {hasReachableProjection
-                      ? monthsToGoal === 0
-                        ? 'Now'
-                        : `${monthsToGoal} months`
-                      : '--'}
-                  </p>
-                  <p className="mt-1.5 text-sm text-slate-600">
-                    Using {selectedVault.protocol.name} at{' '}
-                    {formatPercent(selectedApy)} APY
-                  </p>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-xl border border-slate-200 p-3.5">
-                    <p className="text-sm text-slate-500">Current amount</p>
-                    <p className="mt-1.5 text-lg font-semibold text-slate-900">
-                      {formatUsd(totalDeposits)}
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-slate-200 p-3.5">
-                    <p className="text-sm text-slate-500">Interest earned</p>
-                    <p className="mt-1.5 text-lg font-semibold text-emerald-700">
-                      {formatUsd(interestEarned)}
-                    </p>
-                  </div>
-                </div>
-                <div className="rounded-xl border border-slate-200 p-3.5">
-                  <div className="flex items-center justify-between gap-4">
-                    <p className="text-sm text-slate-500">Time in years</p>
-                    <p className="text-sm font-medium text-slate-900">
-                      {hasReachableProjection ? yearsToGoal.toFixed(1) : '--'}
-                    </p>
-                  </div>
-                  <p className="mt-2.5 text-sm text-slate-600">
-                    Target amount: {formatUsd(targetAmount)}
-                  </p>
-                  <p className="mt-1 text-sm text-slate-600">
-                    {hasReachableProjection
-                      ? `Projected balance at target time: ${formatUsd(projectedBalance)}`
-                      : 'Enter a valid current amount and goal amount to see the estimate.'}
-                  </p>
-                </div>
-              </CardContent>
-            </Card> */}
           </section>
         </div>
       </div>
