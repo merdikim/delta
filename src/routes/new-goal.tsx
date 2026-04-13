@@ -1,3 +1,4 @@
+import Navbar from '#/components/Navbar'
 import Authenticated from '#/guards/authenticated'
 import { earnVaultsQueryOptions } from '#/integrations/lifi/earn'
 import NewGoalPage from '#/pages/NewGoalPage'
@@ -12,6 +13,7 @@ export const Route = createFileRoute('/new-goal')({
 function NewGoal() {
   return (
     <Authenticated>
+      <Navbar/>
       <NewGoalPage />
     </Authenticated>
   )

@@ -17,7 +17,7 @@ const Navbar = () => {
 
   return (
     <>
-      <div className="h-(--navbar-height) w-full flex justify-between items-center border-b-2 border-b-slate-200">
+      <div className="h-(--navbar-height) w-full flex justify-between items-center border-b-2 border-b-slate-200 px-6">
         <Link to="/home">
           <img
             src="https://w7.pngwing.com/pngs/219/153/png-transparent-delta-circle-mathematics-greek-alphabet-symbol-circle-text-logo-number.png"

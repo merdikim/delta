@@ -57,11 +57,13 @@ export default function GoalDetailsPanel({
   positions = [],
   yieldPercent = 0,
   vault,
+  isLoading = false,
 }: {
   goal?: Goal
   positions?: EarnPortfolioPosition[]
   yieldPercent?: number
   vault?: EarnVault
+  isLoading?: boolean
 }) {
   const queryClient = useQueryClient()
   const config = useConfig()
@@ -212,6 +214,29 @@ export default function GoalDetailsPanel({
     }
 
     await addPositionMutation.mutateAsync()
+  }
+
+  if (isLoading) {
+    return (
+      <div className="hidden flex-1 lg:block">
+        <div className="flex h-full animate-pulse flex-col gap-5 rounded-4xl border border-white/70 bg-white/45 p-6 shadow-[0_18px_50px_rgba(15,23,42,0.05)] backdrop-blur xl:p-8">
+          <div className="rounded-4xl border border-white/70 bg-white/80 p-6 shadow-[0_16px_44px_rgba(15,23,42,0.07)]">
+            <div className="h-8 w-56 rounded-full bg-slate-200" />
+            <div className="mt-5 grid gap-3 md:grid-cols-2 2xl:grid-cols-4">
+              <div className="h-20 rounded-2xl bg-slate-200" />
+              <div className="h-20 rounded-2xl bg-slate-200" />
+              <div className="h-20 rounded-2xl bg-slate-200" />
+              <div className="h-20 rounded-2xl bg-slate-200" />
+            </div>
+          </div>
+
+          <div className="grid flex-1 gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.75fr)]">
+            <div className="rounded-4xl bg-white/80 p-5 shadow-[0_14px_38px_rgba(15,23,42,0.06)]" />
+            <div className="rounded-4xl bg-white/80 p-5 shadow-[0_14px_38px_rgba(15,23,42,0.06)]" />
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (!goal) {

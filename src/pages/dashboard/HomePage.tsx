@@ -15,10 +15,28 @@ import { cn } from '#/lib/utils'
 import { ArrowRight, Goal as GoalIcon, Sparkles, Target } from 'lucide-react'
 import SectionBadge from '#/components/cards/SectionBadge'
 
+function GoalCardSkeleton() {
+  return (
+    <div className="mb-2.5 w-full animate-pulse rounded-[1.4rem] border border-slate-200/80 bg-white/85 p-3 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
+      <div className="h-4 w-32 rounded-full bg-slate-200" />
+      <div className="mt-3 grid grid-cols-2 gap-2.5">
+        <div className="rounded-xl bg-slate-50 p-2.5">
+          <div className="h-3 w-14 rounded-full bg-slate-200" />
+          <div className="mt-2 h-5 w-20 rounded-full bg-slate-200" />
+        </div>
+        <div className="rounded-xl bg-slate-50 p-2.5">
+          <div className="h-3 w-16 rounded-full bg-slate-200" />
+          <div className="mt-2 h-5 w-20 rounded-full bg-slate-200" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const HomePage = () => {
   const queryClient = useQueryClient()
   const { address } = useAccount()
-  const { data: goals = [] } = useQuery<Goal[]>({
+  const { data: goals = [], isPending: isGoalsLoading } = useQuery<Goal[]>({
     ...goalsQueryOptions(address ?? ''),
     enabled: Boolean(address),
   })
@@ -75,23 +93,28 @@ const HomePage = () => {
   const activeGoalYieldPercent = activeGoalVault?.analytics.apy.total ?? 0
 
   return (
-    <div className="h-screen w-screen px-6 lg:px-8">
-      <Navbar />
+    <div className="h-[calc(100vh-var(--navbar-height))] w-screen px-6 lg:px-8">
       <div className="flex h-[calc(100vh-var(--navbar-height))] gap-6 py-4">
         <div className="flex w-full flex-col gap-4 lg:w-4/12">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold text-slate-950">Goals</h2>
             <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-medium text-slate-600 shadow-sm">
-              {goals.length} total
+              {isGoalsLoading ? 'Loading...' : `${goals.length} total`}
             </span>
           </div>
           <div
             className={cn(
-              goals.length === 0 ? 'flex-none' : 'flex-1',
+              goals.length === 0 && !isGoalsLoading ? 'flex-none' : 'flex-1',
               'flex flex-col overflow-hidden rounded-3xl border border-white/70 bg-white/75 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur',
             )}
           >
-            {goals.length ? (
+            {isGoalsLoading ? (
+              <div className="flex-1 overflow-y-auto px-4 py-3">
+                <GoalCardSkeleton />
+                <GoalCardSkeleton />
+                <GoalCardSkeleton />
+              </div>
+            ) : goals.length ? (
               <div className="flex-1 overflow-y-auto px-4 py-3">
                 {goals.map((goal) => (
                   <GoalCard
@@ -179,10 +202,11 @@ const HomePage = () => {
         </div>
 
         <GoalDetailsPanel
-          goal={activeGoal}
+          goal={isGoalsLoading ? undefined : activeGoal}
           positions={portfolioPositions}
           yieldPercent={activeGoalYieldPercent}
           vault={activeGoalVault}
+          isLoading={isGoalsLoading}
         />
       </div>
     </div>

@@ -112,10 +112,8 @@ const NewGoalPage = () => {
 
   if (vaults.length === 0) {
     return (
-      <main className="h-screen overflow-hidden px-4 sm:px-5 lg:px-6">
+      <main className="h-[calc(100vh-var(--navbar-height))] overflow-hidden px-4 sm:px-5 lg:px-6">
         <div className="mx-auto flex h-full max-w-7xl flex-col">
-          <Navbar />
-
           <div className="flex flex-1 items-center justify-center py-8">
             <div className="w-full text-center max-w-3xl rounded-4xl border border-white/70 p-6 shadow-[0_28px_90px_rgba(15,23,42,0.24)] sm:p-8">
               <div className="inline-flex items-center gap-2 rounded-full bg-red-600 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white">
@@ -525,7 +523,6 @@ const NewGoalPage = () => {
         onConfirmBridge={() => void bridgeMutation.mutateAsync()}
       />
       <div className="mx-auto flex h-full max-w-7xl flex-col">
-        <Navbar />
 
         <div className="grid min-h-0 flex-1 gap-4 py-4 lg:grid-cols-[1.05fr_0.95fr]">
           <section className="min-h-0 space-y-4">
