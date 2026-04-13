@@ -9,15 +9,7 @@ import {
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import tree_svg from "#/assets/tree.svg"
-
-function SectionBadge({ children }: { children: string }) {
-  return (
-    <div className="inline-flex items-center gap-2 rounded-full border border-primary/80 bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-900 shadow-sm backdrop-blur">
-      <Sparkles className="size-3.5" />
-      {children}
-    </div>
-  )
-}
+import SectionBadge from '#/components/cards/SectionBadge'
 
 function StepCard({
   icon,
@@ -47,9 +39,7 @@ const LandingPage = () => {
         <section className="p-8 lg:p-10">
           <div className="animate-in fade-in slide-in-from-bottom-4 w-full flex duration-700">
             <div>
-              <SectionBadge>
-                Plan the target, then let the yield do more work
-              </SectionBadge>
+              <SectionBadge badge={<Sparkles className="size-3.5" />} text='Plan the target, then let the yield do more work'/>
 
               <h1 className="mt-6 text-5xl font-semibold leading-[1.02] tracking-[-0.04em] sm:text-6xl lg:text-7xl">
                 Your financial goals change from <span className='line-through decoration-3 decoration-destructive'>someday</span> to a <span className="text-emerald-600">funded plan</span>
