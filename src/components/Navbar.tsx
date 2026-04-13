@@ -50,7 +50,6 @@ const Navbar = () => {
           <div className="w-full max-w-sm rounded-[1.75rem] border border-white/70 bg-white p-6 shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-medium text-slate-500">Wallet</p>
                 <h2 className="mt-1 text-2xl font-semibold text-slate-950">
                   Profile
                 </h2>

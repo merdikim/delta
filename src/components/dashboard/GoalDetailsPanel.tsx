@@ -1,4 +1,5 @@
 import DepositIntoVaultModal from '#/components/modals/DepositIntoVaultModal'
+import DepositPendingModal from '#/components/modals/DepositPendingModal'
 import { addGoalDeposit, goalsQueryOptions } from '#/integrations/goals/goals'
 import { getComposerQuote } from '#/integrations/lifi/composer'
 import {
@@ -67,6 +68,9 @@ export default function GoalDetailsPanel({
   const { address, chainId } = useAccount()
   const [isAddPositionModalOpen, setIsAddPositionModalOpen] = useState(false)
   const [depositAmount, setDepositAmount] = useState('0')
+  const [depositStage, setDepositStage] = useState<
+    'idle' | 'txHash' | 'database'
+  >('idle')
   const currentAmount = goal?.currentAmount ?? 0
   const targetAmount = goal?.goalAmount ?? 0
   const depositsAscending = [...(goal?.deposits ?? [])].reverse()
@@ -140,6 +144,8 @@ export default function GoalDetailsPanel({
         throw new Error('Wallet or vault missing')
       }
 
+      setDepositStage('txHash')
+
       const fromAmount = parseUnits(depositAmount, 6).toString()
 
       const quote = await getComposerQuote({
@@ -165,6 +171,8 @@ export default function GoalDetailsPanel({
         config,
       })
 
+      setDepositStage('database')
+
       return addGoalDeposit({
         data: {
           // @ts-expect-error
@@ -184,6 +192,10 @@ export default function GoalDetailsPanel({
       }
 
       setIsAddPositionModalOpen(false)
+      setDepositAmount('0')
+    },
+    onSettled: () => {
+      setDepositStage('idle')
     },
   })
 
@@ -222,10 +234,17 @@ export default function GoalDetailsPanel({
 
   return (
     <div className="hidden flex-1 lg:block">
+      <DepositPendingModal
+        isOpen={addPositionMutation.isPending}
+        isWaitingForTxHash={
+          addPositionMutation.isPending && depositStage !== 'database'
+        }
+        isWaitingForDatabase={depositStage === 'database'}
+      />
       <DepositIntoVaultModal
         goal={goal}
         vault={vault}
-        isOpen={isAddPositionModalOpen}
+        isOpen={isAddPositionModalOpen && !addPositionMutation.isPending}
         isPending={addPositionMutation.isPending}
         hasSelectedVault={hasSelectedVault}
         depositAmount={depositAmount}
@@ -442,14 +461,12 @@ export default function GoalDetailsPanel({
                   onClick={() => {
                     setIsAddPositionModalOpen(true)
                   }}
-                  className="flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50/80 p-2 text-left transition hover:border-emerald-300 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="flex items-center justify-between rounded-2xl border border-primary bg-primary p-2 text-left transition hover:bg-emerald-500"
                   disabled={!hasSelectedVault}
                 >
-                  <div>
-                    <p className=" font-semibold text-slate-950">Add amount</p>
-                  </div>
-                  <div className="rounded-full bg-white p-2 text-emerald-700 shadow-sm">
-                    <Plus className="size-4" />
+                  <div className='flex items-center justify-between w-full'>
+                    <p className=" font-semibold text-white">Add amount</p>
+                    <span className='bg-white rounded-full h-6 w-6 flex items-center justify-center'><Plus className="size-4 font-bold" /></span> 
                   </div>
                 </button>
               </div>
