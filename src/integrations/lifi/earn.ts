@@ -5,6 +5,7 @@ import type {
   EarnVault,
   EarnVaultsResponse,
 } from '#/types'
+import { SUPPORTED_ASSETS } from '#/utils'
 import { queryOptions } from '@tanstack/react-query'
 import { createServerFn } from '@tanstack/react-start'
 import {
@@ -22,6 +23,43 @@ const walletAddressSchema = z.object({
   walletAddress: z.string().min(1),
 })
 
+const SUPPORTED_EARN_CHAIN_IDS = Object.values(SUPPORTED_ASSETS.networks)
+  .map((network) => network.id)
+
+const SUPPORTED_EARN_TOKEN_SYMBOLS = Object.values(SUPPORTED_ASSETS.tokens).map(
+  (token) => token.symbol,
+)
+
+async function fetchEarnVaultsByChainAndAsset({
+  apiKey,
+  chainId,
+  asset,
+}: {
+  apiKey: string
+  chainId: number
+  asset: string
+}) {
+  const params = new URLSearchParams({
+    chainId: String(chainId),
+    asset,
+    sortBy: 'apy',
+    limit: '1',
+  })
+
+  const response = await fetch(`https://earn.li.fi/v1/earn/vaults?${params}`, {
+    headers: {
+      'x-lifi-api-key': apiKey,
+    },
+  })  
+
+  if (!response.ok) {
+    throw new Error(`Failed to load LI.FI Earn vaults for ${asset} on ${chainId}`)
+  }
+
+  const data = (await response.json()) as EarnVaultsResponse
+  return data.data
+}
+
 export const getEarnVaults = createServerFn({
   method: 'GET',
 }).handler(async (): Promise<EarnVault[]> => {
@@ -31,26 +69,42 @@ export const getEarnVaults = createServerFn({
     throw new Error('Missing LIFI_EARN_API_KEY')
   }
 
-  const response = await fetch(
-    'https://earn.li.fi/v1/earn/vaults?chainId=8453&asset=USDC&sortBy=apy&limit=3',
-    {
-      headers: {
-        'x-lifi-api-key': apiKey,
-      },
-    },
+  const vaultResponses = await Promise.all(
+    SUPPORTED_EARN_CHAIN_IDS.flatMap((chainId) =>
+      SUPPORTED_EARN_TOKEN_SYMBOLS.map((asset) =>
+        fetchEarnVaultsByChainAndAsset({
+          apiKey,
+          chainId,
+          asset,
+        }),
+      ),
+    ),
   )
 
-  if (!response.ok) {
-    throw new Error('Failed to load LI.FI Earn vaults')
-  }
+  const topVaultByChain = new Map<number, EarnVault>()
 
-  const data = (await response.json()) as EarnVaultsResponse
-  return data.data
+  vaultResponses
+    .flat()
+    .filter((vault) => vault.isTransactional)
+    .forEach((vault) => {
+      const currentTopVault = topVaultByChain.get(vault.chainId)
+
+      if (
+        !currentTopVault ||
+        vault.analytics.apy.total > currentTopVault.analytics.apy.total
+      ) {
+        topVaultByChain.set(vault.chainId, vault)
+      }
+    })
+
+  return [...topVaultByChain.values()].sort(
+    (left, right) => right.analytics.apy.total - left.analytics.apy.total,
+  )
 })
 
 export function earnVaultsQueryOptions() {
   return queryOptions<EarnVault[]>({
-    queryKey: ['lifi-earn-vaults', 'base', 'usdc'],
+    queryKey: ['lifi-earn-vaults', 'supported-chains', 'supported-tokens'],
     queryFn: () => getEarnVaults(),
     staleTime: 1000 * 60 * 5,
   })

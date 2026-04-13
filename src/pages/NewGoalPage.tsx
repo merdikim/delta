@@ -3,6 +3,7 @@ import CreateGoalPendingModal from '#/components/modals/CreateGoalPendingModal'
 import SuccessModal from '#/components/modals/SuccessModal'
 import Navbar from '#/components/Navbar'
 import { createGoal, goalsQueryOptions } from '#/integrations/goals/goals'
+import { getBridgeQuote } from '#/integrations/lifi/bridge'
 import { getComposerQuote } from '#/integrations/lifi/composer'
 import { Button } from '#/components/ui/button'
 import {
@@ -19,6 +20,7 @@ import {
 import {
   useMutation,
   useQueryClient,
+  useQuery,
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
@@ -26,7 +28,6 @@ import { useState } from 'react'
 import {
   AlertCircle,
   ArrowLeft,
-  Coins,
   Landmark,
   TrendingUp,
 } from 'lucide-react'
@@ -38,12 +39,13 @@ import {
   formatCompactUsd,
   formatPercent,
   formatTokenBalance,
-  formatUsd,
+  SUPPORTED_ASSETS,
 } from '#/utils'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { useAccount, useBalance, useConfig } from 'wagmi'
-import { sendTransaction, switchChain } from '@wagmi/core'
-import { parseUnits } from 'viem'
+import { useAccount, useBalance, useConfig, useReadContracts } from 'wagmi'
+import { sendTransaction, switchChain, waitForTransactionReceipt } from '@wagmi/core'
+import { erc20Abi, parseUnits, zeroAddress } from 'viem'
+import type { Address } from 'viem'
 
 const NewGoalPage = () => {
   const navigate = useNavigate()
@@ -63,12 +65,48 @@ const NewGoalPage = () => {
   >('idle')
   const [showSuccessState, setShowSuccessState] = useState(false)
   const [isBridgeModalOpen, setIsBridgeModalOpen] = useState(false)
+  const [bridgeSourceChainId, setBridgeSourceChainId] = useState<number>(
+    SUPPORTED_ASSETS.networks.eth.id,
+  )
   const balanceQuery = { enabled: Boolean(address), refetchInterval: 15_000 }
+  const supportedNetworks = Object.values(SUPPORTED_ASSETS.networks)
 
-  const usdcBaseBalance = useBalance({
+  const ethMainnetBalance = useBalance({
     address,
-    chainId: BASE_CHAIN_ID,
-    token: BASE_USDC_ADDRESS,
+    chainId: SUPPORTED_ASSETS.networks.eth.id,
+    query: balanceQuery,
+  })
+
+  const ethBaseBalance = useBalance({
+    address,
+    chainId: SUPPORTED_ASSETS.networks.base.id,
+    query: balanceQuery,
+  })
+
+  const ethOptimismBalance = useBalance({
+    address,
+    chainId: SUPPORTED_ASSETS.networks.optimism.id,
+    query: balanceQuery,
+  })
+
+  const supportedTokenBalanceContracts = Object.entries(
+    SUPPORTED_ASSETS.tokens,
+  ).flatMap(([tokenKey, token]) => {
+    if (tokenKey === 'eth' || !('addresses' in token) || !address) {
+      return []
+    }
+
+    return supportedNetworks.map((network) => ({
+      abi: erc20Abi,
+      address: token.addresses[network.key]!,
+      chainId: network.id,
+      functionName: 'balanceOf' as const,
+      args: [address] as const,
+    }))
+  })
+
+  const supportedTokenBalances = useReadContracts({
+    contracts: supportedTokenBalanceContracts,
     query: balanceQuery,
   })
 
@@ -91,7 +129,7 @@ const NewGoalPage = () => {
               </h1>
 
               <p className="mt-4 text-sm leading-7 text-center px-20 sm:px-32 sm:text-base">
-                LI.FI didn&apos;t return any Base USDC vaults that accept
+                LI.FI didn&apos;t return any supported vaults that accept
                 deposits right now, so Delta can&apos;t safely create a funded
                 goal at the moment.
               </p>
@@ -114,6 +152,19 @@ const NewGoalPage = () => {
 
   const topVault = vaults[0]
   const selectedVault = vaults[selectedVaultIndex] ?? topVault
+  const selectedVaultTokenSymbol =
+    selectedVault.underlyingTokens[0].symbol.toUpperCase()
+  const selectedVaultNetwork = supportedNetworks.find(
+    (network) => network.id === selectedVault.chainId,
+  )
+  const selectedSupportedToken = Object.values(SUPPORTED_ASSETS.tokens).find(
+    (token) => token.symbol === selectedVaultTokenSymbol,
+  )
+  const selectedVaultDestinationChain =
+    selectedVaultNetwork ?? supportedNetworks[0]
+  const bridgeChainOptions = supportedNetworks.filter(
+    (network) => network.id !== selectedVault.chainId,
+  )
   const currentAmountValue = Number(currentAmount) || 0
   const targetAmount = Number(goalAmount) || 0
   const selectedApy = selectedVault.analytics.apy.total
@@ -133,25 +184,211 @@ const NewGoalPage = () => {
     monthsToGoal += 1
   }
 
-  const hasReachableProjection =
-    targetAmount > 0 &&
-    currentAmountValue > 0 &&
-    projectedBalance >= targetAmount
+  const tokenBalancesBySymbol = {
+    USDC: 0n,
+    DAI: 0n,
+    ETH: 0n,
+  }
 
-  const totalDeposits = currentAmountValue
-  const interestEarned = Math.max(projectedBalance - currentAmountValue, 0)
-  const yearsToGoal = monthsToGoal / 12
-  const depositAmount =
-    currentAmountValue > 0 ? parseUnits(currentAmount, 6) : 0n
-  const baseUsdcBalance = usdcBaseBalance.data?.value
-  const missingBaseUsdc =
-    baseUsdcBalance === undefined || baseUsdcBalance >= depositAmount
+  supportedTokenBalances.data?.forEach((result, index) => {
+    const tokenIndex = Math.floor(index / supportedNetworks.length)
+    const token = Object.values(SUPPORTED_ASSETS.tokens).filter(
+      (supportedToken) => supportedToken.symbol !== 'ETH',
+    )[tokenIndex]
+
+    if (result.status === 'success' && token) {
+      tokenBalancesBySymbol[token.symbol] += result.result
+    }
+  })
+
+  tokenBalancesBySymbol.ETH =
+    (ethMainnetBalance.data?.value ?? 0n) +
+    (ethBaseBalance.data?.value ?? 0n) +
+    (ethOptimismBalance.data?.value ?? 0n)
+
+  const selectedTokenDecimals = selectedSupportedToken?.decimals ?? 6
+  const selectedVaultChainBalance =
+    selectedVaultTokenSymbol === 'ETH'
+      ? selectedVault.chainId === SUPPORTED_ASSETS.networks.eth.id
+        ? (ethMainnetBalance.data?.value ?? 0n)
+        : selectedVault.chainId === SUPPORTED_ASSETS.networks.base.id
+          ? (ethBaseBalance.data?.value ?? 0n)
+          : selectedVault.chainId === SUPPORTED_ASSETS.networks.optimism.id
+            ? (ethOptimismBalance.data?.value ?? 0n)
+            : 0n
+      : (() => {
+          const supportedErc20Tokens = Object.values(SUPPORTED_ASSETS.tokens)
+            .filter((token) => token.symbol !== 'ETH')
+          const tokenIndex = supportedErc20Tokens.findIndex(
+            (token) => token.symbol === selectedVaultTokenSymbol,
+          )
+          const networkIndex = supportedNetworks.findIndex(
+            (network) => network.id === selectedVault.chainId,
+          )
+
+          if (tokenIndex < 0 || networkIndex < 0) {
+            return 0n
+          }
+
+          const result =
+            supportedTokenBalances.data?.[
+              tokenIndex * supportedNetworks.length + networkIndex
+            ]
+
+          return result?.status === 'success' ? result.result : 0n
+        })()
+  const requiredSelectedTokenAmount =
+    currentAmountValue > 0
+      ? parseUnits(currentAmount, selectedTokenDecimals)
+      : 0n
+  const missingDestinationAmount =
+    selectedVaultChainBalance >= requiredSelectedTokenAmount
       ? 0n
-      : depositAmount - baseUsdcBalance
-  const hasInsufficientBaseUsdc =
+      : requiredSelectedTokenAmount - selectedVaultChainBalance
+  const hasInsufficientSupportedBalance =
     currentAmountValue > 0 &&
-    baseUsdcBalance !== undefined &&
-    baseUsdcBalance < depositAmount
+    selectedVaultChainBalance < requiredSelectedTokenAmount
+  const selectedBridgeSourceChain =
+    bridgeChainOptions.find((chain) => chain.id === bridgeSourceChainId) ??
+    bridgeChainOptions[0]
+  const isWalletOnSelectedBridgeChain = chainId === selectedBridgeSourceChain?.id
+
+  const bridgeQuoteQuery = useQuery({
+    queryKey: [
+      'bridge-quote',
+      address,
+      bridgeSourceChainId,
+      selectedVault.chainId,
+      selectedVaultTokenSymbol,
+      missingDestinationAmount.toString(),
+    ],
+    queryFn: async () => {
+      const fromTokenAddress =
+        selectedVaultTokenSymbol === 'ETH'
+          ? zeroAddress
+          : selectedSupportedToken &&
+              'addresses' in selectedSupportedToken
+            ? selectedSupportedToken.addresses[selectedBridgeSourceChain.key]
+            : undefined
+      const toTokenAddress =
+        selectedVaultTokenSymbol === 'ETH'
+          ? zeroAddress
+          : selectedSupportedToken &&
+              'addresses' in selectedSupportedToken
+            ? selectedSupportedToken.addresses[selectedVaultDestinationChain.key]
+            : undefined
+
+      if (!fromTokenAddress || !toTokenAddress) {
+        throw new Error(
+          `Unable to bridge ${selectedVaultTokenSymbol} for the selected route.`,
+        )
+      }
+
+      let fromAmount = missingDestinationAmount
+      let quote = await getBridgeQuote({
+        data: {
+          fromChain: bridgeSourceChainId,
+          toChain: selectedVault.chainId,
+          fromToken: fromTokenAddress,
+          toToken: toTokenAddress,
+          fromAddress: address!,
+          toAddress: address!,
+          fromAmount: fromAmount.toString(),
+        },
+      })
+
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        const minimumReceived = quote.estimate.toAmountMin
+          ? BigInt(quote.estimate.toAmountMin)
+          : 0n
+
+        if (minimumReceived >= missingDestinationAmount) {
+          return quote
+        }
+
+        const shortfall = missingDestinationAmount - minimumReceived
+        const bufferedShortfall = (shortfall * 105n) / 100n
+
+        fromAmount += bufferedShortfall > 0n ? bufferedShortfall : 1n
+
+        quote = await getBridgeQuote({
+          data: {
+            fromChain: bridgeSourceChainId,
+            toChain: selectedVault.chainId,
+            fromToken: fromTokenAddress,
+            toToken: toTokenAddress,
+            fromAddress: address!,
+            toAddress: address!,
+            fromAmount: fromAmount.toString(),
+          },
+        })
+      }
+
+      return quote
+    },
+    enabled:
+      isBridgeModalOpen &&
+      Boolean(address) &&
+      missingDestinationAmount > 0n &&
+      Boolean(selectedBridgeSourceChain),
+    staleTime: 1000 * 30,
+  })
+
+  const bridgeFeeAmount = bridgeQuoteQuery.data?.estimate.feeCosts?.[0]
+  const bridgeGasAmount = bridgeQuoteQuery.data?.estimate.gasCosts?.[0]
+
+  const bridgeMutation = useMutation({
+    mutationFn: async () => {
+      if (!address || !bridgeQuoteQuery.data) {
+        throw new Error('Bridge quote missing')
+      }
+
+      if (chainId !== bridgeSourceChainId) {
+        await switchChain(config, { chainId: bridgeSourceChainId })
+      }
+
+      const hash = await sendTransaction(config, {
+        account: address,
+        chainId: bridgeSourceChainId,
+        to: bridgeQuoteQuery.data.transactionRequest.to as Address,
+        data: bridgeQuoteQuery.data.transactionRequest.data,
+        value: bridgeQuoteQuery.data.transactionRequest.value
+          ? BigInt(bridgeQuoteQuery.data.transactionRequest.value)
+          : 0n,
+        gas: bridgeQuoteQuery.data.transactionRequest.gasLimit
+          ? BigInt(bridgeQuoteQuery.data.transactionRequest.gasLimit)
+          : undefined,
+        gasPrice: bridgeQuoteQuery.data.transactionRequest.gasPrice
+          ? BigInt(bridgeQuoteQuery.data.transactionRequest.gasPrice)
+          : undefined,
+        maxFeePerGas: bridgeQuoteQuery.data.transactionRequest.maxFeePerGas
+          ? BigInt(bridgeQuoteQuery.data.transactionRequest.maxFeePerGas)
+          : undefined,
+        maxPriorityFeePerGas:
+          bridgeQuoteQuery.data.transactionRequest.maxPriorityFeePerGas
+            ? BigInt(
+                bridgeQuoteQuery.data.transactionRequest.maxPriorityFeePerGas,
+              )
+            : undefined,
+      })
+
+      await waitForTransactionReceipt(config, {
+        chainId: bridgeSourceChainId,
+        hash,
+      })
+
+      return hash
+    },
+    onSuccess: async () => {
+      setIsBridgeModalOpen(false)
+      await Promise.all([
+        ethMainnetBalance.refetch(),
+        ethBaseBalance.refetch(),
+        ethOptimismBalance.refetch(),
+        supportedTokenBalances.refetch(),
+      ])
+    },
+  })
 
   const createGoalMutation = useMutation({
     mutationFn: async () => {
@@ -165,7 +402,7 @@ const NewGoalPage = () => {
 
       const quote = await getComposerQuote({
         data: {
-          fromChain: selectedVault.chainId,
+          fromChain: BASE_CHAIN_ID,
           toChain: selectedVault.chainId,
           fromToken: BASE_USDC_ADDRESS,
           toToken: selectedVault.address,
@@ -175,14 +412,14 @@ const NewGoalPage = () => {
         },
       })
 
-      if (chainId !== selectedVault.chainId) {
-        await switchChain(config, { chainId: selectedVault.chainId })
+      if (chainId !== BASE_CHAIN_ID) {
+        await switchChain(config, { chainId: BASE_CHAIN_ID })
       }
 
       const txHash = await depositToVault({
         quote,
         account: address,
-        chainId: selectedVault.chainId,
+        chainId: BASE_CHAIN_ID,
         config,
       })
 
@@ -225,7 +462,7 @@ const NewGoalPage = () => {
       !goalName.trim() ||
       currentAmountValue <= 0 ||
       targetAmount <= 0 ||
-      hasInsufficientBaseUsdc
+      hasInsufficientSupportedBalance
     ) {
       return
     }
@@ -247,19 +484,24 @@ const NewGoalPage = () => {
         goalName={goalName}
         confettiPieces={confettiPieces}
       />
-      {/* <BridgeModal
+      <BridgeModal
         isOpen={isBridgeModalOpen}
         onClose={() => setIsBridgeModalOpen(false)}
-        missingBaseUsdc={missingBaseUsdc}
-        baseUsdcBalance={baseUsdcBalance}
+        amountNeeded={missingDestinationAmount}
+        currentDestinationBalance={selectedVaultChainBalance}
+        tokenSymbol={selectedVaultTokenSymbol}
+        tokenDecimals={selectedTokenDecimals}
+        destinationChainLabel={
+          selectedVaultNetwork?.label ?? selectedVault.network
+        }
         formatTokenBalance={formatTokenBalance}
-        chainOptions={Object.entries(BRIDGEABLE_CHAINS).map(([id, chain]) => ({
-          id: Number(id),
+        chainOptions={bridgeChainOptions.map((chain) => ({
+          id: chain.id,
           label: chain.label,
         }))}
         selectedChainId={bridgeSourceChainId}
         onSelectChain={setBridgeSourceChainId}
-        selectedChainLabel={selectedBridgeSourceChain.label}
+        selectedChainLabel={selectedBridgeSourceChain?.label ?? 'Ethereum'}
         isWalletOnSelectedChain={isWalletOnSelectedBridgeChain}
         quote={bridgeQuoteQuery.data}
         isQuoteLoading={bridgeQuoteQuery.isLoading}
@@ -281,7 +523,7 @@ const NewGoalPage = () => {
         }
         isBridgePending={bridgeMutation.isPending}
         onConfirmBridge={() => void bridgeMutation.mutateAsync()}
-      /> */}
+      />
       <div className="mx-auto flex h-full max-w-7xl flex-col">
         <Navbar />
 
@@ -315,7 +557,7 @@ const NewGoalPage = () => {
                   <div className="grid gap-4 md:grid-cols-2">
                     <label className="grid gap-1.5">
                       <span className="text-sm font-medium text-slate-800">
-                        Current amount
+                        Initial deposit
                       </span>
                       <div className="flex h-11 items-center rounded-xl border border-slate-200 bg-white px-4 transition focus-within:border-emerald-400 focus-within:ring-4 focus-within:ring-emerald-100">
                         <span className="mr-3 text-sm font-medium text-slate-500">
@@ -362,21 +604,31 @@ const NewGoalPage = () => {
                     </p>
                   ) : null}
 
-                  {hasInsufficientBaseUsdc ? (
+                  {hasInsufficientSupportedBalance ? (
                     <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
                       <p className="font-medium">
-                        Insufficient Base USDC balance
+                        Insufficient {selectedVaultTokenSymbol} balance
                       </p>
                       <p className="my-1 leading-5">
-                        You have {formatTokenBalance(baseUsdcBalance, 6)} USDC
-                        on Base, but this deposit needs{' '}
-                        {formatTokenBalance(depositAmount, 6)} USDC.
+                        You have{' '}
+                        {formatTokenBalance(
+                          selectedVaultChainBalance,
+                          selectedTokenDecimals,
+                        )}{' '}
+                        {selectedVaultTokenSymbol} on{' '}
+                        {selectedVaultNetwork?.label ?? selectedVault.network},
+                        but this deposit needs{' '}
+                        {formatTokenBalance(
+                          requiredSelectedTokenAmount,
+                          selectedTokenDecimals,
+                        )}{' '}
+                        {selectedVaultTokenSymbol}.
                       </p>
 
                       <Button
                         type="button"
                         className="mt-2 w-full"
-                        // onClick={openBridgeModal}
+                        onClick={() => setIsBridgeModalOpen(true)}
                       >
                         Bridge before continuing
                       </Button>
@@ -407,7 +659,7 @@ const NewGoalPage = () => {
                         !goalName.trim() ||
                         currentAmountValue <= 0 ||
                         targetAmount <= 0 ||
-                        hasInsufficientBaseUsdc
+                        hasInsufficientSupportedBalance
                       }
                     >
                       {createGoalMutation.isPending
@@ -428,8 +680,8 @@ const NewGoalPage = () => {
                   Protocol yields
                 </CardTitle>
                 <CardDescription className="text-sm leading-5 text-slate-700">
-                  Live vault data from LI.FI Earn, sorted by total
-                  APY.
+                  Live LI.FI Earn vaults showing the top depositable APY on
+                  each supported chain.
                 </CardDescription>
               </CardHeader>
 
@@ -456,7 +708,7 @@ const NewGoalPage = () => {
                           </span>
                         </div>
                         <p className="mt-1 truncate text-[11px]">
-                          {vault.name} • {vault.underlyingTokens[0]?.symbol} •{' '}
+                          {vault.underlyingTokens[0]?.symbol} •{' '}
                           {vault.network}
                         </p>
                       </div>
@@ -470,12 +722,12 @@ const NewGoalPage = () => {
                             {formatPercent(vault.analytics.apy.total)}
                           </p>
                         </div>
-                        <div className="text-right text-[10px] leading-4">
+                        {/* <div className="text-right text-[10px] leading-4">
                           <p>Base {formatPercent(vault.analytics.apy.base)}</p>
                           <p>
                             Reward {formatPercent(vault.analytics.apy.reward)}
                           </p>
-                        </div>
+                        </div> */}
                       </div>
                     </div>
                   </button>

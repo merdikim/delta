@@ -32,6 +32,7 @@ export type LifiBridgeQuote = {
     approvalAddress?: string
     toAmount?: string
     toAmountMin?: string
+    executionDuration?: number
     feeCosts?: Array<{
       amount: string
       token?: {

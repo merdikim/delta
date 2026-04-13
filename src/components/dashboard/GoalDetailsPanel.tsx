@@ -160,14 +160,14 @@ export default function GoalDetailsPanel({
         },
       })
 
-      if (chainId !== vault.chainId) {
-        await switchChain(config, { chainId: vault.chainId })
+      if (chainId !== BASE_CHAIN_ID) {
+        await switchChain(config, { chainId: BASE_CHAIN_ID })
       }
 
       const txHash = await depositToVault({
         quote,
         account: address,
-        chainId: vault.chainId,
+        chainId: BASE_CHAIN_ID,
         config,
       })
 

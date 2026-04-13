@@ -19,6 +19,11 @@ type BridgeFeeCost = {
 type BridgeQuoteView = {
   tool?: string
   action: {
+    fromAmount: string
+    fromToken: {
+      symbol?: string
+      decimals?: number
+    }
     toToken: {
       symbol?: string
       decimals?: number
@@ -27,14 +32,41 @@ type BridgeQuoteView = {
   estimate: {
     toAmount?: string
     toAmountMin?: string
+    executionDuration?: number
   }
+}
+
+function formatExecutionDuration(seconds?: number) {
+  if (!seconds || seconds <= 0) {
+    return '--'
+  }
+
+  if (seconds < 60) {
+    return `${Math.ceil(seconds)} sec`
+  }
+
+  const minutes = Math.floor(seconds / 60)
+  const remainingSeconds = Math.ceil(seconds % 60)
+
+  if (remainingSeconds === 60) {
+    return `${minutes + 1} min`
+  }
+
+  if (remainingSeconds === 0) {
+    return `${minutes} min`
+  }
+
+  return `${minutes} min ${remainingSeconds} sec`
 }
 
 type BridgeModalProps = {
   isOpen: boolean
   onClose: () => void
-  missingBaseUsdc: bigint
-  baseUsdcBalance?: bigint
+  amountNeeded: bigint
+  currentDestinationBalance?: bigint
+  tokenSymbol: string
+  tokenDecimals: number
+  destinationChainLabel: string
   formatTokenBalance: (value: bigint | undefined, decimals: number) => string
   chainOptions: BridgeChainOption[]
   selectedChainId: number
@@ -54,8 +86,11 @@ type BridgeModalProps = {
 export default function BridgeModal({
   isOpen,
   onClose,
-  missingBaseUsdc,
-  baseUsdcBalance,
+  amountNeeded,
+  currentDestinationBalance,
+  tokenSymbol,
+  tokenDecimals,
+  destinationChainLabel,
   formatTokenBalance,
   chainOptions,
   selectedChainId,
@@ -81,12 +116,8 @@ export default function BridgeModal({
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-2xl font-semibold text-slate-950">
-              Bridge to Base
+              Bridge to {destinationChainLabel}
             </h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              Use LI.FI to move the missing USDC to Base before creating the
-              goal.
-            </p>
           </div>
           <button
             type="button"
@@ -101,15 +132,16 @@ export default function BridgeModal({
           <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
             <div className="flex items-center justify-between gap-4">
               <span className="text-sm text-slate-500">
-                Amount needed on Base
+                Amount needed on {destinationChainLabel}
               </span>
               <span className="text-lg font-semibold text-slate-950">
-                {formatTokenBalance(missingBaseUsdc, 6)} USDC
+                {formatTokenBalance(amountNeeded, tokenDecimals)} {tokenSymbol}
               </span>
             </div>
             <p className="mt-2 text-sm text-slate-600">
-              Current Base balance: {formatTokenBalance(baseUsdcBalance, 6)}{' '}
-              USDC
+              Current {destinationChainLabel} balance:{' '}
+              {formatTokenBalance(currentDestinationBalance, tokenDecimals)}{' '}
+              {tokenSymbol}
             </p>
           </div>
 
@@ -130,7 +162,9 @@ export default function BridgeModal({
                   <p className="text-sm font-medium text-slate-950">
                     {chain.label}
                   </p>
-                  <p className="mt-1 text-xs text-slate-500">USDC to Base</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {tokenSymbol} to {destinationChainLabel}
+                  </p>
                 </button>
               ))}
             </div>
@@ -161,7 +195,15 @@ export default function BridgeModal({
                 <div className="rounded-2xl border border-slate-200 p-4">
                   <p className="text-sm text-slate-500">Route</p>
                   <p className="mt-1 text-base font-semibold text-slate-950">
-                    {selectedChainLabel} to Base
+                    {selectedChainLabel} to {destinationChainLabel}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Send{' '}
+                    {formatTokenBalance(
+                      BigInt(quote.action.fromAmount),
+                      quote.action.fromToken.decimals ?? 6,
+                    )}{' '}
+                    {quote.action.fromToken.symbol ?? 'USDC'}
                   </p>
                   <p className="mt-1 text-sm text-slate-600">
                     Provider: {quote.tool ?? 'LI.FI'}
@@ -212,6 +254,12 @@ export default function BridgeModal({
                           bridgeGasAmount.token?.decimals ?? 18,
                         )} ${bridgeGasAmount.token?.symbol ?? ''}`.trim()
                       : '--'}
+                  </span>
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-4">
+                  <span className="text-sm text-slate-500">Estimated time</span>
+                  <span className="text-sm font-medium text-slate-900">
+                    {formatExecutionDuration(quote.estimate.executionDuration)}
                   </span>
                 </div>
               </div>

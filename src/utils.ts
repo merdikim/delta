@@ -87,6 +87,54 @@ export const confettiPieces = [
 export const BASE_CHAIN_ID = 8453
 export const BASE_USDC_ADDRESS =
   '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' as Address
+
+export const SUPPORTED_ASSETS = {
+  networks: {
+    eth: {
+      id: 1,
+      key: 'eth',
+      label: 'Ethereum',
+    },
+    base: {
+      id: 8453,
+      key: 'base',
+      label: 'Base',
+    },
+    optimism: {
+      id: 10,
+      key: 'optimism',
+      label: 'Optimism',
+    },
+  },
+  tokens: {
+    usdc: {
+      symbol: 'USDC',
+      label: 'USD Coin',
+      decimals: 6,
+      addresses: {
+        eth: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' as Address,
+        base: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' as Address,
+        optimism: '0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85' as Address,
+      },
+    },
+    dai: {
+      symbol: 'DAI',
+      label: 'Dai',
+      decimals: 18,
+      addresses: {
+        eth: '0x6B175474E89094C44Da98b954EedeAC495271d0F' as Address,
+        base: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb' as Address,
+        optimism: '0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1' as Address,
+      },
+    },
+    eth: {
+      symbol: 'ETH',
+      label: 'Ether',
+      decimals: 18,
+    },
+  },
+} as const
+
 export const BRIDGEABLE_CHAINS = {
   1: {
     label: 'Ethereum',
