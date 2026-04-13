@@ -23,6 +23,8 @@ const walletAddressSchema = z.object({
   walletAddress: z.string().min(1),
 })
 
+const MAX_PREFERRED_VAULT_APY = 20
+
 const SUPPORTED_EARN_CHAIN_IDS = Object.values(SUPPORTED_ASSETS.networks)
   .map((network) => network.id)
 
@@ -43,7 +45,7 @@ async function fetchEarnVaultsByChainAndAsset({
     chainId: String(chainId),
     asset,
     sortBy: 'apy',
-    limit: '1',
+    limit: '5',
   })
 
   const response = await fetch(`https://earn.li.fi/v1/earn/vaults?${params}`, {
@@ -81,21 +83,32 @@ export const getEarnVaults = createServerFn({
     ),
   )
 
-  const topVaultByChain = new Map<number, EarnVault>()
+  const vaultsByChain = new Map<number, EarnVault[]>()
 
   vaultResponses
     .flat()
     .filter((vault) => vault.isTransactional)
     .forEach((vault) => {
-      const currentTopVault = topVaultByChain.get(vault.chainId)
-
-      if (
-        !currentTopVault ||
-        vault.analytics.apy.total > currentTopVault.analytics.apy.total
-      ) {
-        topVaultByChain.set(vault.chainId, vault)
-      }
+      const existingVaults = vaultsByChain.get(vault.chainId) ?? []
+      existingVaults.push(vault)
+      vaultsByChain.set(vault.chainId, existingVaults)
     })
+
+  const topVaultByChain = new Map<number, EarnVault>()
+
+  vaultsByChain.forEach((vaults, chainId) => {
+    const sortedVaults = [...vaults].sort(
+      (left, right) => right.analytics.apy.total - left.analytics.apy.total,
+    )
+    const preferredVault =
+      sortedVaults.find(
+        (vault) => vault.analytics.apy.total <= MAX_PREFERRED_VAULT_APY,
+      ) ?? sortedVaults[0]
+
+    if (preferredVault) {
+      topVaultByChain.set(chainId, preferredVault)
+    }
+  })
 
   return [...topVaultByChain.values()].sort(
     (left, right) => right.analytics.apy.total - left.analytics.apy.total,
