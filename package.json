@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "vite dev --port 3000",
     "build": "vite build",
+    "start": "node .output/server/index.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "lint": "eslint",
@@ -49,6 +50,7 @@
     "clsx": "^2.1.1",
     "lucide-react": "^0.577.0",
     "marked": "^15.0.8",
+    "nitro": "^3.0.260311-beta",
     "prisma": "^7.4.2",
     "radix-ui": "^1.4.3",
     "react": "^19.2.0",
@@ -61,6 +63,9 @@
     "viem": "^2.47.12",
     "wagmi": "^2.19.5",
     "zod": "^4.3.6"
+  },
+  "engines": {
+    "node": ">=20.19 <23"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.16",
