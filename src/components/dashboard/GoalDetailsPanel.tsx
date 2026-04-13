@@ -116,7 +116,7 @@ export default function GoalDetailsPanel({
   const remainingToTarget = Math.max(targetAmount - totalPositionUsd, 0)
   const hasSelectedVault = Boolean(vault)
   const depositAmountNumber = Number(depositAmount) || 0
-  const projectedPrincipal = trackedValue > 0 ? trackedValue : currentAmount
+  const projectedPrincipal = currentAmount
   const sevenDayApyPercent = vault?.analytics.apy7d ?? yieldPercent
   const oneMonthApyPercent = vault?.analytics.apy30d ?? yieldPercent
   const oneYearApyPercent = vault?.analytics.apy.total ?? yieldPercent
@@ -136,7 +136,7 @@ export default function GoalDetailsPanel({
     365,
   )
 
-  const projectedOneYearAndYieldTotal = totalPositionUsd + projectedOneYearYield
+  const projectedValueOneYear = projectedOneYearYield
 
   const addPositionMutation = useMutation({
     mutationFn: async () => {
@@ -280,7 +280,7 @@ export default function GoalDetailsPanel({
               />
               <StatCard
                 label="Projected value(1year)"
-                value={formatUsd(projectedOneYearAndYieldTotal)}
+                value={formatUsd(projectedValueOneYear)}
               />
             </div>
 
