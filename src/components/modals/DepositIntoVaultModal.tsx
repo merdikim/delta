@@ -1,7 +1,15 @@
 import type { EarnVault, Goal } from '#/types'
-import { formatUsd, truncate } from '#/utils'
+import { formatUsd } from '#/utils'
 import { X } from 'lucide-react'
 import type { FormEvent } from 'react'
+
+type FundingChainOption = {
+  id: number
+  label: string
+  balance: bigint
+  isAvailable: boolean
+  isDestinationChain: boolean
+}
 
 type DepositIntoVaultModalProps = {
   goal: Goal
@@ -12,6 +20,17 @@ type DepositIntoVaultModalProps = {
   depositAmount: string
   depositAmountNumber: number
   error?: string
+  tokenSymbol: string
+  tokenDecimals: number
+  destinationChainLabel: string
+  fundingChainOptions: FundingChainOption[]
+  selectedFundingChainId: number
+  onSelectFundingChain: (chainId: number) => void
+  hasAnySupportedFundingChain: boolean
+  hasSufficientFundsOnSelectedChain: boolean
+  selectedFundingChainLabel: string
+  selectedFundingChainBalance: bigint
+  formatTokenBalance: (value: bigint | undefined, decimals: number) => string
   onClose: () => void
   onDepositAmountChange: (value: string) => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
@@ -26,6 +45,17 @@ export default function DepositIntoVaultModal({
   depositAmount,
   depositAmountNumber,
   error,
+  tokenSymbol,
+  tokenDecimals,
+  destinationChainLabel,
+  fundingChainOptions,
+  selectedFundingChainId,
+  onSelectFundingChain,
+  hasAnySupportedFundingChain,
+  hasSufficientFundsOnSelectedChain,
+  selectedFundingChainLabel,
+  selectedFundingChainBalance,
+  formatTokenBalance,
   onClose,
   onDepositAmountChange,
   onSubmit,
@@ -36,14 +66,14 @@ export default function DepositIntoVaultModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-6 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-4xl border border-white/70 bg-white p-6 shadow-[0_24px_80px_rgba(15,23,42,0.24)]">
+      <div className="w-full max-w-2xl rounded-4xl border border-white/70 bg-white p-6 shadow-[0_24px_80px_rgba(15,23,42,0.24)]">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h3 className="mt-2 text-2xl font-semibold text-slate-950">
               Deposit towards your goal
             </h3>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Add more USDC to{' '}
+              Add more {tokenSymbol} to{' '}
               {vault?.name || goal.selectedVaultName || 'the selected vault'}{' '}
               for {goal.name}.
             </p>
@@ -81,6 +111,71 @@ export default function DepositIntoVaultModal({
             Current amount : <b>{formatUsd(goal.currentAmount)}</b>
           </div>
 
+          {depositAmountNumber > 0 ? (
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-900">
+              <p className="font-medium">Funding route</p>
+              <p className="mt-1 leading-5 text-slate-600">
+                Choose which chain to fund from. Delta will use LI.FI Composer
+                to bridge and deposit in one flow when the source chain differs
+                from {destinationChainLabel}.
+              </p>
+
+              <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                {fundingChainOptions.map((chain) => (
+                  <button
+                    key={chain.id}
+                    type="button"
+                    onClick={() => onSelectFundingChain(chain.id)}
+                    className={`rounded-xl border px-4 py-3 text-left transition ${
+                      chain.id === selectedFundingChainId
+                        ? 'border-emerald-300 bg-emerald-50'
+                        : 'border-slate-200 bg-white hover:border-slate-300'
+                    }`}
+                  >
+                    <p className="text-sm font-medium text-slate-950">
+                      {chain.label}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Balance:{' '}
+                      {formatTokenBalance(chain.balance, tokenDecimals)}{' '}
+                      {tokenSymbol}
+                    </p>
+                    <p
+                      className={`mt-2 text-xs font-medium ${
+                        chain.isAvailable ? 'text-emerald-700' : 'text-amber-700'
+                      }`}
+                    >
+                      {chain.isAvailable
+                        ? chain.isDestinationChain
+                          ? 'Direct deposit'
+                          : 'Bridge + deposit'
+                        : 'Insufficient balance'}
+                    </p>
+                  </button>
+                ))}
+              </div>
+
+              {!hasAnySupportedFundingChain ? (
+                <p className="mt-3 text-sm text-amber-800">
+                  You need enough {tokenSymbol} on one supported chain to add
+                  this deposit.
+                </p>
+              ) : !hasSufficientFundsOnSelectedChain ? (
+                <p className="mt-3 text-sm text-amber-800">
+                  {selectedFundingChainLabel} does not have enough {tokenSymbol}
+                  {' '}for this deposit amount.
+                </p>
+              ) : (
+                <p className="mt-3 text-sm text-slate-600">
+                  Route: <span className="font-medium text-slate-900">{selectedFundingChainLabel}</span>{' '}
+                  to <span className="font-medium text-slate-900">{destinationChainLabel}</span>.
+                  {' '}Available balance:{' '}
+                  {formatTokenBalance(selectedFundingChainBalance, tokenDecimals)} {tokenSymbol}.
+                </p>
+              )}
+            </div>
+          ) : null}
+
           {error ? (
             <p className="mt-4 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
               {error}
@@ -105,7 +200,11 @@ export default function DepositIntoVaultModal({
             <button
               type="submit"
               disabled={
-                isPending || !hasSelectedVault || depositAmountNumber <= 0
+                isPending ||
+                !hasSelectedVault ||
+                depositAmountNumber <= 0 ||
+                !hasAnySupportedFundingChain ||
+                !hasSufficientFundsOnSelectedChain
               }
               className="flex-1 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
             >

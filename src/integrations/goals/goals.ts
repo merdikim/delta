@@ -14,6 +14,7 @@ const createGoalSchema = z.object({
   currentAmount: z.number().positive(),
   goalAmount: z.number().positive(),
   selectedVaultName: z.string().optional(),
+  selectedVaultAddress: z.string().optional(),
   selectedProtocol: z.string().optional(),
   txHash: z.string().min(1),
 })
@@ -30,13 +31,14 @@ const addGoalDepositSchema = z.object({
   txHash: z.string().min(1),
 })
 
-function mapGoal(goal: {
+type GoalRecord = {
   id: string
   walletAddress: string
   name: string
   monthlyAmount: { toString: () => string }
   goalAmount: { toString: () => string }
   selectedVaultName: string | null
+  selectedVaultAddress?: string | null
   selectedProtocol: string | null
   deposits: Array<{
     id: string
@@ -46,7 +48,15 @@ function mapGoal(goal: {
   }>
   createdAt: Date
   updatedAt: Date
-}): Goal {
+}
+
+const goalInclude = {
+  deposits: {
+    orderBy: { createdAt: 'desc' as const },
+  },
+}
+
+function mapGoal(goal: GoalRecord): Goal {
   const deposits = goal.deposits.map((deposit) => ({
     id: deposit.id,
     amount: Number(deposit.amount.toString()),
@@ -64,6 +74,7 @@ function mapGoal(goal: {
         : Number(goal.monthlyAmount.toString()),
     goalAmount: Number(goal.goalAmount.toString()),
     selectedVaultName: goal.selectedVaultName ?? undefined,
+    selectedVaultAddress: goal.selectedVaultAddress ?? undefined,
     selectedProtocol: goal.selectedProtocol ?? undefined,
     deposits,
     createdAt: goal.createdAt.toISOString(),
@@ -78,43 +89,59 @@ export const listGoals = createServerFn({ method: 'GET' })
   .handler(async ({ data }): Promise<Goal[]> => {
     const goals = await prisma.goal.findMany({
       where: { walletAddress: data.walletAddress },
-      include: {
-        deposits: {
-          orderBy: { createdAt: 'desc' },
-        },
-      },
+      include: goalInclude,
       orderBy: { createdAt: 'desc' },
     })
 
-    return goals.map(mapGoal)
+    return goals.map((goal) => mapGoal(goal as GoalRecord))
   })
 
 export const createGoal = createServerFn({ method: 'POST' })
   .inputValidator((input) => createGoalSchema.parse(input))
   .handler(async ({ data }): Promise<Goal> => {
-    const goal = await prisma.goal.create({
-      data: {
-        walletAddress: data.walletAddress,
-        name: data.name,
-        monthlyAmount: data.currentAmount.toFixed(2),
-        goalAmount: data.goalAmount.toFixed(2),
-        selectedVaultName: data.selectedVaultName,
-        selectedProtocol: data.selectedProtocol,
-        deposits: {
-          create: {
-            amount: data.currentAmount.toFixed(2),
-            txHash: data.txHash,
-          },
+    const baseCreateData = {
+      walletAddress: data.walletAddress,
+      name: data.name,
+      monthlyAmount: data.currentAmount.toFixed(2),
+      goalAmount: data.goalAmount.toFixed(2),
+      selectedVaultName: data.selectedVaultName,
+      selectedProtocol: data.selectedProtocol,
+      deposits: {
+        create: {
+          amount: data.currentAmount.toFixed(2),
+          txHash: data.txHash,
         },
-      },
-      include: {
-        deposits: {
-          orderBy: { createdAt: 'desc' },
-        },
-      },
-    })
+      }
+    }
 
-    return mapGoal(goal)
+    try {
+      const goal = await prisma.goal.create({
+        data: {
+          ...baseCreateData,
+          ...(data.selectedVaultAddress
+            ? { selectedVaultAddress: data.selectedVaultAddress }
+            : {}),
+        } as never,
+        include: goalInclude,
+      })
+
+      return mapGoal(goal as GoalRecord)
+    } catch (error) {
+      const isMissingSelectedVaultAddressField =
+        error instanceof Error &&
+        error.message.includes('Unknown argument `selectedVaultAddress`')
+
+      if (!isMissingSelectedVaultAddressField) {
+        throw error
+      }
+
+      const goal = await prisma.goal.create({
+        data: baseCreateData as never,
+        include: goalInclude,
+      })
+
+      return mapGoal(goal as GoalRecord)
+    }
   })
 
 export const addGoalDeposit = createServerFn({ method: 'POST' })
@@ -142,14 +169,10 @@ export const addGoalDeposit = createServerFn({ method: 'POST' })
           },
         },
       },
-      include: {
-        deposits: {
-          orderBy: { createdAt: 'desc' },
-        },
-      },
+      include: goalInclude,
     })
 
-    return mapGoal(goal)
+    return mapGoal(goal as GoalRecord)
   })
 
 export const deleteGoal = createServerFn({ method: 'POST' })

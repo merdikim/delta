@@ -21,6 +21,7 @@ async function main() {
         monthlyAmount: '500.00',
         goalAmount: '20000.00',
         selectedVaultName: 'USDC',
+        selectedVaultAddress: '0xseedvaultaddress1',
         selectedProtocol: 'yo-protocol',
       },
       {
@@ -29,6 +30,7 @@ async function main() {
         monthlyAmount: '300.00',
         goalAmount: '10000.00',
         selectedVaultName: 'CSUSDC',
+        selectedVaultAddress: '0xseedvaultaddress2',
         selectedProtocol: 'morpho-v1',
       },
     ],

@@ -15,6 +15,13 @@ import { cn } from '#/lib/utils'
 import { ArrowRight, Goal as GoalIcon, Sparkles, Target } from 'lucide-react'
 import SectionBadge from '#/components/cards/SectionBadge'
 
+function normalize(value?: string) {
+  return value
+    ?.trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '')
+}
+
 function GoalCardSkeleton() {
   return (
     <div className="mb-2.5 w-full animate-pulse rounded-[1.4rem] border border-slate-200/80 bg-white/85 p-3 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
@@ -85,11 +92,45 @@ const HomePage = () => {
 
   const selectedGoal = goals.find((goal) => goal.id === selectedGoalId)
   const activeGoal = selectedGoal ?? goals[0]
-  const activeGoalVault = vaults.find(
+  const normalizedGoalProtocol = normalize(activeGoal?.selectedProtocol)
+  const normalizedVaultName = normalize(activeGoal?.selectedVaultName)
+  const matchingPositionChainIds = new Set(
+    portfolioPositions
+      .filter((position) => {
+        const normalizedProtocol = normalize(position.protocolName)
+        const normalizedAssetName = normalize(position.asset.name)
+        const normalizedAssetSymbol = normalize(position.asset.symbol)
+
+        const protocolMatches = normalizedGoalProtocol
+          ? normalizedProtocol === normalizedGoalProtocol
+          : false
+        const assetMatches = normalizedVaultName
+          ? normalizedAssetName === normalizedVaultName ||
+            normalizedAssetSymbol === normalizedVaultName ||
+            normalizedAssetName?.includes(normalizedVaultName) ||
+            normalizedVaultName.includes(normalizedAssetName ?? '')
+          : false
+
+        return protocolMatches || assetMatches
+      })
+      .map((position) => position.chainId),
+  )
+  const fallbackVaultMatches = vaults.filter(
     (vault) =>
       vault.name === activeGoal?.selectedVaultName &&
       vault.protocol.name === activeGoal?.selectedProtocol,
   )
+  const activeGoalVault =
+    vaults.find(
+      (vault) =>
+        activeGoal?.selectedVaultAddress &&
+        vault.address.toLowerCase() ===
+          activeGoal.selectedVaultAddress.toLowerCase(),
+    ) ??
+    fallbackVaultMatches.find((vault) =>
+      matchingPositionChainIds.has(vault.chainId),
+    ) ??
+    fallbackVaultMatches[0]
   const activeGoalYieldPercent = activeGoalVault?.analytics.apy.total ?? 0
 
   return (

@@ -14,6 +14,7 @@ model Goal {
   monthlyAmount     Decimal  @db.Decimal(18, 2)
   goalAmount        Decimal  @db.Decimal(18, 2)
   selectedVaultName String?
+  selectedVaultAddress String?
   selectedProtocol  String?
   deposits          GoalDeposit[]
   createdAt         DateTime @default(now())

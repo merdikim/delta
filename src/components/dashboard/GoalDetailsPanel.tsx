@@ -8,18 +8,18 @@ import {
 } from '#/integrations/lifi/earn'
 import type { EarnPortfolioPosition, EarnVault, Goal } from '#/types'
 import {
-  BASE_CHAIN_ID,
-  BASE_USDC_ADDRESS,
   formatDate,
+  formatTokenBalance,
   formatUsd,
+  SUPPORTED_ASSETS,
 } from '#/utils'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { CalendarDays, Coins, Plus } from 'lucide-react'
 import type { FormEvent } from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { switchChain } from '@wagmi/core'
-import { parseUnits } from 'viem'
-import { useAccount, useConfig } from 'wagmi'
+import { erc20Abi, parseUnits, zeroAddress } from 'viem'
+import { useAccount, useBalance, useConfig, useReadContracts } from 'wagmi'
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
@@ -70,9 +70,48 @@ export default function GoalDetailsPanel({
   const { address, chainId } = useAccount()
   const [isAddPositionModalOpen, setIsAddPositionModalOpen] = useState(false)
   const [depositAmount, setDepositAmount] = useState('0')
+  const [selectedFundingChainId, setSelectedFundingChainId] = useState<number>(
+    SUPPORTED_ASSETS.networks.base.id,
+  )
   const [depositStage, setDepositStage] = useState<
     'idle' | 'txHash' | 'database'
   >('idle')
+  const supportedNetworks = Object.values(SUPPORTED_ASSETS.networks)
+  const balanceQuery = { enabled: Boolean(address), refetchInterval: 15_000 }
+  const ethMainnetBalance = useBalance({
+    address,
+    chainId: SUPPORTED_ASSETS.networks.eth.id,
+    query: balanceQuery,
+  })
+  const ethBaseBalance = useBalance({
+    address,
+    chainId: SUPPORTED_ASSETS.networks.base.id,
+    query: balanceQuery,
+  })
+  const ethOptimismBalance = useBalance({
+    address,
+    chainId: SUPPORTED_ASSETS.networks.optimism.id,
+    query: balanceQuery,
+  })
+  const supportedTokenBalanceContracts = Object.entries(
+    SUPPORTED_ASSETS.tokens,
+  ).flatMap(([tokenKey, token]) => {
+    if (tokenKey === 'eth' || !('addresses' in token) || !address) {
+      return []
+    }
+
+    return supportedNetworks.map((network) => ({
+      abi: erc20Abi,
+      address: token.addresses[network.key]!,
+      chainId: network.id,
+      functionName: 'balanceOf' as const,
+      args: [address] as const,
+    }))
+  })
+  const supportedTokenBalances = useReadContracts({
+    contracts: supportedTokenBalanceContracts,
+    query: balanceQuery,
+  })
   const currentAmount = goal?.currentAmount ?? 0
   const targetAmount = goal?.goalAmount ?? 0
   const depositsAscending = [...(goal?.deposits ?? [])].reverse()
@@ -118,6 +157,16 @@ export default function GoalDetailsPanel({
   const remainingToTarget = Math.max(targetAmount - totalPositionUsd, 0)
   const hasSelectedVault = Boolean(vault)
   const depositAmountNumber = Number(depositAmount) || 0
+  const selectedVaultTokenSymbol =
+    vault?.underlyingTokens[0]?.symbol.toUpperCase() ?? 'USDC'
+  const selectedSupportedToken = Object.values(SUPPORTED_ASSETS.tokens).find(
+    (token) => token.symbol === selectedVaultTokenSymbol,
+  )
+  const selectedTokenDecimals = selectedSupportedToken?.decimals ?? 6
+  const selectedVaultNetwork = supportedNetworks.find(
+    (network) => network.id === vault?.chainId,
+  )
+  const destinationChainLabel = selectedVaultNetwork?.label ?? vault?.network ?? 'the destination chain'
   const projectedPrincipal = currentAmount
   const sevenDayApyPercent = vault?.analytics.apy7d ?? yieldPercent
   const oneMonthApyPercent = vault?.analytics.apy30d ?? yieldPercent
@@ -140,6 +189,88 @@ export default function GoalDetailsPanel({
 
   const projectedValueOneYear = projectedOneYearYield
 
+  const getTokenBalanceForChain = (targetChainId: number) => {
+    if (selectedVaultTokenSymbol === 'ETH') {
+      return targetChainId === SUPPORTED_ASSETS.networks.eth.id
+        ? (ethMainnetBalance.data?.value ?? 0n)
+        : targetChainId === SUPPORTED_ASSETS.networks.base.id
+          ? (ethBaseBalance.data?.value ?? 0n)
+          : targetChainId === SUPPORTED_ASSETS.networks.optimism.id
+            ? (ethOptimismBalance.data?.value ?? 0n)
+            : 0n
+    }
+
+    const supportedErc20Tokens = Object.values(SUPPORTED_ASSETS.tokens).filter(
+      (token) => token.symbol !== 'ETH',
+    )
+    const tokenIndex = supportedErc20Tokens.findIndex(
+      (token) => token.symbol === selectedVaultTokenSymbol,
+    )
+    const networkIndex = supportedNetworks.findIndex(
+      (network) => network.id === targetChainId,
+    )
+
+    if (tokenIndex < 0 || networkIndex < 0) {
+      return 0n
+    }
+
+    const result =
+      supportedTokenBalances.data?.[
+        tokenIndex * supportedNetworks.length + networkIndex
+      ]
+
+    return result?.status === 'success' ? result.result : 0n
+  }
+
+  const requiredSelectedTokenAmount =
+    depositAmountNumber > 0 ? parseUnits(depositAmount, selectedTokenDecimals) : 0n
+  const fundingChainOptions = supportedNetworks.map((network) => {
+    const balance = getTokenBalanceForChain(network.id)
+    return {
+      id: network.id,
+      label: network.label,
+      balance,
+      isAvailable:
+        depositAmountNumber <= 0 || balance >= requiredSelectedTokenAmount,
+      isDestinationChain: network.id === vault?.chainId,
+    }
+  })
+  const fallbackFundingChainId =
+    chainId && supportedNetworks.some((network) => network.id === chainId)
+      ? chainId
+      : vault?.chainId ?? SUPPORTED_ASSETS.networks.base.id
+  const selectedFundingChain =
+    supportedNetworks.find((network) => network.id === selectedFundingChainId) ??
+    supportedNetworks.find((network) => network.id === fallbackFundingChainId) ??
+    supportedNetworks[0]
+  const selectedFundingChainBalance = getTokenBalanceForChain(
+    selectedFundingChain.id,
+  )
+  const hasSufficientFundsOnSelectedChain =
+    depositAmountNumber <= 0 ||
+    selectedFundingChainBalance >= requiredSelectedTokenAmount
+  const hasAnySupportedFundingChain =
+    depositAmountNumber <= 0 ||
+    fundingChainOptions.some((network) => network.isAvailable)
+
+  useEffect(() => {
+    const preferredChainId =
+      fundingChainOptions.find(
+        (network) => network.id === chainId && network.isAvailable,
+      )?.id ??
+      fundingChainOptions.find((network) => network.isAvailable)?.id ??
+      fallbackFundingChainId
+
+    if (preferredChainId !== selectedFundingChainId) {
+      setSelectedFundingChainId(preferredChainId)
+    }
+  }, [
+    chainId,
+    fallbackFundingChainId,
+    fundingChainOptions,
+    selectedFundingChainId,
+  ])
+
   const addPositionMutation = useMutation({
     mutationFn: async () => {
       if (!address || !vault) {
@@ -148,13 +279,29 @@ export default function GoalDetailsPanel({
 
       setDepositStage('txHash')
 
-      const fromAmount = parseUnits(depositAmount, 6).toString()
+      const fromAmount = parseUnits(
+        depositAmount,
+        selectedTokenDecimals,
+      ).toString()
+      const fromToken =
+        selectedVaultTokenSymbol === 'ETH'
+          ? zeroAddress
+          : selectedSupportedToken &&
+              'addresses' in selectedSupportedToken
+            ? selectedSupportedToken.addresses[selectedFundingChain.key]
+            : undefined
+
+      if (!fromToken) {
+        throw new Error(
+          `Unable to fund this deposit with ${selectedVaultTokenSymbol}.`,
+        )
+      }
 
       const quote = await getComposerQuote({
         data: {
-          fromChain: BASE_CHAIN_ID,
+          fromChain: selectedFundingChain.id,
           toChain: vault.chainId,
-          fromToken: BASE_USDC_ADDRESS,
+          fromToken,
           toToken: vault.address,
           fromAddress: address,
           toAddress: address,
@@ -162,14 +309,14 @@ export default function GoalDetailsPanel({
         },
       })
 
-      if (chainId !== BASE_CHAIN_ID) {
-        await switchChain(config, { chainId: BASE_CHAIN_ID })
+      if (chainId !== selectedFundingChain.id) {
+        await switchChain(config, { chainId: selectedFundingChain.id })
       }
 
       const txHash = await depositToVault({
         quote,
         account: address,
-        chainId: BASE_CHAIN_ID,
+        chainId: selectedFundingChain.id,
         config,
       })
 
@@ -208,7 +355,9 @@ export default function GoalDetailsPanel({
       addPositionMutation.isPending ||
       !address ||
       !vault ||
-      depositAmountNumber <= 0
+      depositAmountNumber <= 0 ||
+      !hasAnySupportedFundingChain ||
+      !hasSufficientFundsOnSelectedChain
     ) {
       return
     }
@@ -281,13 +430,24 @@ export default function GoalDetailsPanel({
               ? 'Unable to add the position right now.'
               : undefined
         }
+        tokenSymbol={selectedVaultTokenSymbol}
+        tokenDecimals={selectedTokenDecimals}
+        destinationChainLabel={destinationChainLabel}
+        fundingChainOptions={fundingChainOptions}
+        selectedFundingChainId={selectedFundingChain.id}
+        onSelectFundingChain={setSelectedFundingChainId}
+        hasAnySupportedFundingChain={hasAnySupportedFundingChain}
+        hasSufficientFundsOnSelectedChain={hasSufficientFundsOnSelectedChain}
+        selectedFundingChainLabel={selectedFundingChain.label}
+        selectedFundingChainBalance={selectedFundingChainBalance}
+        formatTokenBalance={formatTokenBalance}
         onClose={() => setIsAddPositionModalOpen(false)}
         onDepositAmountChange={setDepositAmount}
         onSubmit={(event) => void handleAddPosition(event)}
       />
 
       <div className="flex h-full rounded-4xl border border-white/70 bg-white/45 shadow-[0_18px_50px_rgba(15,23,42,0.05)] backdrop-blur">
-        <div className="flex w-full flex-col gap-6 p-6 xl:p-8">
+        <div className="flex w-full flex-col gap-6 p-6 xl:p-8 overflow-scroll">
           <div className="rounded-4xl border border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.94),rgba(241,245,249,0.84))] p-6 shadow-[0_16px_44px_rgba(15,23,42,0.07)]">
             <h3 className="truncate text-2xl font-semibold leading-tight text-slate-950">
               {goal.name}
@@ -404,22 +564,7 @@ export default function GoalDetailsPanel({
 
                     <div className="space-y-4">
                       <div className="flex flex-col gap-3">
-                        {/* <div className="rounded-2xl h-12 border flex justify-between items-center border-slate-200 bg-slate-50/80 px-4">
-                          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
-                            Target amount
-                          </p>
-                          <p className="mt-2 text-sm text-slate-950">
-                            {formatUsd(targetAmount)}
-                          </p>
-                        </div>
-                        <div className="rounded-2xl h-12 border flex justify-between items-center border-slate-200 bg-slate-50/80 px-4">
-                          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
-                            Remaining
-                          </p>
-                          <p className="mt-2 text-sm text-slate-950">
-                            {formatUsd(Math.max(targetAmount - trackedValue, 0))}
-                          </p>
-                        </div> */}
+                  
                         <div className="rounded-2xl h-12 border flex justify-between items-center border-slate-200 bg-slate-50/80 px-4">
                           <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-500">
                             Projected 1 year yield
