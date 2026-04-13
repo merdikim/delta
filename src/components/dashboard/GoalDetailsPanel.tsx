@@ -1,9 +1,17 @@
 import DepositIntoVaultModal from '#/components/modals/DepositIntoVaultModal'
 import { addGoalDeposit, goalsQueryOptions } from '#/integrations/goals/goals'
 import { getComposerQuote } from '#/integrations/lifi/composer'
-import { depositToVault, earnPortfolioPositionsQueryOptions } from '#/integrations/lifi/earn'
+import {
+  depositToVault,
+  earnPortfolioPositionsQueryOptions,
+} from '#/integrations/lifi/earn'
 import type { EarnPortfolioPosition, EarnVault, Goal } from '#/types'
-import { BASE_CHAIN_ID, BASE_USDC_ADDRESS, formatDate, formatUsd, truncate } from '#/utils'
+import {
+  BASE_CHAIN_ID,
+  BASE_USDC_ADDRESS,
+  formatDate,
+  formatUsd,
+} from '#/utils'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { CalendarDays, Coins, Plus } from 'lucide-react'
 import type { FormEvent } from 'react'
@@ -12,13 +20,7 @@ import { switchChain } from '@wagmi/core'
 import { parseUnits } from 'viem'
 import { useAccount, useConfig } from 'wagmi'
 
-function StatCard({
-  label,
-  value,
-}: {
-  label: string
-  value: string
-}) {
+function StatCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-white/70 bg-white/80 px-3 py-2 shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
       <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-500">
@@ -30,7 +32,23 @@ function StatCard({
 }
 
 function normalize(value?: string) {
-  return value?.trim().toLowerCase().replace(/[^a-z0-9]+/g, '')
+  return value
+    ?.trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '')
+}
+
+function calculateProjectedYield(
+  principal: number,
+  annualApyPercent: number,
+  days: number,
+) {
+  if (principal <= 0 || annualApyPercent <= 0 || days <= 0) {
+    return 0
+  }
+
+  const annualRate = annualApyPercent / 100
+  return principal * ((1 + annualRate) ** (days / 365) - 1)
 }
 
 export default function GoalDetailsPanel({
@@ -89,12 +107,32 @@ export default function GoalDetailsPanel({
   const trackedValue = Math.max(totalPositionUsd, currentAmount)
   const trackedProgressPercent =
     targetAmount > 0 ? Math.min((trackedValue / targetAmount) * 100, 100) : 0
-  const yieldEarned = Math.max(trackedValue - currentAmount, 0)
   const trackedStroke = (trackedProgressPercent / 100) * outerCircumference
   const depositsStroke = (depositsProgressPercent / 100) * innerCircumference
   const remainingToTarget = Math.max(targetAmount - totalPositionUsd, 0)
   const hasSelectedVault = Boolean(vault)
   const depositAmountNumber = Number(depositAmount) || 0
+  const projectedPrincipal = trackedValue > 0 ? trackedValue : currentAmount
+  const sevenDayApyPercent = vault?.analytics.apy7d ?? yieldPercent
+  const oneMonthApyPercent = vault?.analytics.apy30d ?? yieldPercent
+  const oneYearApyPercent = vault?.analytics.apy.total ?? yieldPercent
+  const projectedSevenDayYield = calculateProjectedYield(
+    projectedPrincipal,
+    sevenDayApyPercent,
+    7,
+  )
+  const projectedOneMonthYield = calculateProjectedYield(
+    projectedPrincipal,
+    oneMonthApyPercent,
+    30,
+  )
+  const projectedOneYearYield = calculateProjectedYield(
+    projectedPrincipal,
+    oneYearApyPercent,
+    365,
+  )
+
+  const projectedOneYearAndYieldTotal = totalPositionUsd + projectedOneYearYield
 
   const addPositionMutation = useMutation({
     mutationFn: async () => {
@@ -225,8 +263,8 @@ export default function GoalDetailsPanel({
                 value={`${yieldPercent.toFixed(2)}% APY`}
               />
               <StatCard
-                label="Tracked value"
-                value={formatUsd(totalPositionUsd)}
+                label="Projected value(1year)"
+                value={formatUsd(projectedOneYearAndYieldTotal)}
               />
             </div>
 
@@ -325,7 +363,7 @@ export default function GoalDetailsPanel({
 
                     <div className="space-y-4">
                       <div className="flex flex-col gap-3">
-                        <div className="rounded-2xl h-12 border flex justify-between items-center border-slate-200 bg-slate-50/80 px-4">
+                        {/* <div className="rounded-2xl h-12 border flex justify-between items-center border-slate-200 bg-slate-50/80 px-4">
                           <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-500">
                             Target amount
                           </p>
@@ -340,13 +378,29 @@ export default function GoalDetailsPanel({
                           <p className="mt-2 text-sm text-slate-950">
                             {formatUsd(Math.max(targetAmount - trackedValue, 0))}
                           </p>
+                        </div> */}
+                        <div className="rounded-2xl h-12 border flex justify-between items-center border-slate-200 bg-slate-50/80 px-4">
+                          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-500">
+                            Projected 1 year yield
+                          </p>
+                          <p className="text-sm text-slate-950">
+                            {formatUsd(projectedOneYearYield)}
+                          </p>
                         </div>
                         <div className="rounded-2xl h-12 border flex justify-between items-center border-slate-200 bg-slate-50/80 px-4">
                           <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-500">
-                            Yield earned
+                            Projected 1 month yield
                           </p>
                           <p className="text-sm text-slate-950">
-                            {formatUsd(yieldEarned)}
+                            {formatUsd(projectedOneMonthYield)}
+                          </p>
+                        </div>
+                        <div className="rounded-2xl h-12 border flex justify-between items-center border-slate-200 bg-slate-50/80 px-4">
+                          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-500">
+                            Projected 7 days yield
+                          </p>
+                          <p className="text-sm text-slate-950">
+                            {formatUsd(projectedSevenDayYield)}
                           </p>
                         </div>
                       </div>
@@ -364,9 +418,15 @@ export default function GoalDetailsPanel({
                   </div>
                 )}
               </div>
-              <div className='w-full flex items-center justify-center gap-6 pt-4'>
-                <div className='flex items-center'>Current deposits <div className='h-3 w-3 ml-2 bg-[#10b981]'></div></div>
-                <div className='flex items-center'><div className='h-3 w-3 mr-2 bg-[#0ea5e9]'></div> Current deposits + yield </div>
+              <div className="w-full flex items-center justify-center gap-6 pt-4">
+                <div className="flex items-center">
+                  Current deposits{' '}
+                  <div className="h-3 w-3 ml-2 bg-[#10b981]"></div>
+                </div>
+                <div className="flex items-center">
+                  <div className="h-3 w-3 mr-2 bg-[#0ea5e9]"></div> Current
+                  deposits + yield{' '}
+                </div>
               </div>
             </section>
 
@@ -389,9 +449,7 @@ export default function GoalDetailsPanel({
                   disabled={!hasSelectedVault}
                 >
                   <div>
-                    <p className=" font-semibold text-slate-950">
-                      Add amount
-                    </p>
+                    <p className=" font-semibold text-slate-950">Add amount</p>
                   </div>
                   <div className="rounded-full bg-white p-2 text-emerald-700 shadow-sm">
                     <Plus className="size-4" />

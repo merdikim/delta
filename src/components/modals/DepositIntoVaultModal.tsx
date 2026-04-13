@@ -43,7 +43,9 @@ export default function DepositIntoVaultModal({
               Deposit towards your goal
             </h3>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Add more USDC to {vault?.name || goal.selectedVaultName || 'the selected vault'} for {goal.name}.
+              Add more USDC to{' '}
+              {vault?.name || goal.selectedVaultName || 'the selected vault'}{' '}
+              for {goal.name}.
             </p>
           </div>
           <button
@@ -76,7 +78,7 @@ export default function DepositIntoVaultModal({
           </label>
 
           <div className="mt-4">
-            Current amount : <b>{formatUsd(goal.currentAmount)}</b> 
+            Current amount : <b>{formatUsd(goal.currentAmount)}</b>
           </div>
 
           {error ? (
@@ -87,7 +89,8 @@ export default function DepositIntoVaultModal({
 
           {!hasSelectedVault ? (
             <p className="mt-4 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              This goal&apos;s vault could not be matched to a live deposit option.
+              This goal&apos;s vault could not be matched to a live deposit
+              option.
             </p>
           ) : null}
 

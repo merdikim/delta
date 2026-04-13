@@ -8,8 +8,11 @@ import { useAccount, useDisconnect, useEnsAvatar, useEnsName } from 'wagmi'
 const Navbar = () => {
   const { address } = useAccount()
   const { disconnect } = useDisconnect()
-  const { data:ensName } = useEnsName({ address, chainId:1 })
-  const { data: ensAvatar, isLoading:isLoadingProfileImage } = useEnsAvatar({ name:ensName || "", chainId: 1 })
+  const { data: ensName } = useEnsName({ address, chainId: 1 })
+  const { data: ensAvatar, isLoading: isLoadingProfileImage } = useEnsAvatar({
+    name: ensName || '',
+    chainId: 1,
+  })
   const [isProfileOpen, setIsProfileOpen] = useState(false)
 
   return (
@@ -79,7 +82,7 @@ const Navbar = () => {
                 <div className="min-w-0">
                   <p className="text-sm text-slate-500">Connected address</p>
                   <p className="truncate text-base font-semibold text-slate-950">
-                    {ensName?? truncate(address!, 6)}
+                    {ensName ?? truncate(address!, 6)}
                   </p>
                 </div>
               </div>

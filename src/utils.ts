@@ -1,5 +1,5 @@
-import { formatUnits  } from 'viem'
-import type {Address} from 'viem';
+import { formatUnits } from 'viem'
+import type { Address } from 'viem'
 
 export function formatPercent(value: number) {
   return `${value.toFixed(2)}%`
@@ -140,10 +140,7 @@ export function formatDate(
   }).format(date)
 }
 
-export function truncate(
-  value: string,
-  length = 3,
-) {
+export function truncate(value: string, length = 3) {
   if (value.length <= length) {
     return value
   }
@@ -151,4 +148,5 @@ export function truncate(
   return `${value.slice(0, length)}...${value.slice(-length)}`
 }
 
-export const DEFAULT_PROFILE = "https://upload.wikimedia.org/wikipedia/commons/9/99/Sample_User_Icon.png"
+export const DEFAULT_PROFILE =
+  'https://upload.wikimedia.org/wikipedia/commons/9/99/Sample_User_Icon.png'

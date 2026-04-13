@@ -82,8 +82,7 @@ export const getEarnPortfolioPositions = createServerFn({
       throw new Error('Failed to load LI.FI Earn portfolio positions')
     }
 
-    const portfolio =
-      (await response.json()) as EarnPortfolioPositionsResponse
+    const portfolio = (await response.json()) as EarnPortfolioPositionsResponse
 
     return portfolio.positions
   })

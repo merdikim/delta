@@ -22,7 +22,13 @@ import {
 } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useState } from 'react'
-import { Coins, Landmark, TrendingUp } from 'lucide-react'
+import {
+  AlertCircle,
+  ArrowLeft,
+  Coins,
+  Landmark,
+  TrendingUp,
+} from 'lucide-react'
 import type { EarnVault } from '#/types'
 import {
   BASE_CHAIN_ID,
@@ -33,7 +39,7 @@ import {
   formatTokenBalance,
   formatUsd,
 } from '#/utils'
-import { useNavigate } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { useAccount, useBalance, useConfig } from 'wagmi'
 import { sendTransaction, switchChain } from '@wagmi/core'
 import { parseUnits } from 'viem'
@@ -69,18 +75,33 @@ const NewGoalPage = () => {
           <Navbar />
 
           <div className="flex flex-1 items-center justify-center py-8">
-            <Card className="w-full max-w-xl rounded-3xl border-white/70 bg-white/85 py-0 text-center shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
-              <CardHeader className="px-6 pt-6">
-                <CardTitle className="text-xl text-slate-950">
-                  Deposits unavailable
-                </CardTitle>
-                <CardDescription className="text-sm leading-6 text-slate-600">
-                  LI.FI did not return any depositable vaults right now, so goal
-                  creation is temporarily paused until a supported protocol is
-                  available again.
-                </CardDescription>
-              </CardHeader>
-            </Card>
+            <div className="w-full text-center max-w-3xl rounded-4xl border border-white/70 p-6 shadow-[0_28px_90px_rgba(15,23,42,0.24)] sm:p-8">
+              <div className="inline-flex items-center gap-2 rounded-full bg-red-600 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white">
+                <AlertCircle className="size-3.5" />
+                Deposits unavailable
+              </div>
+
+              <h1 className="mt-4 text-xl font-semibold leading-tight sm:text-2xl">
+                Goal creation is paused until a depositable vault comes back
+                online.
+              </h1>
+
+              <p className="mt-4 text-sm leading-7 text-center px-20 sm:px-32 sm:text-base">
+                LI.FI didn&apos;t return any Base USDC vaults that accept
+                deposits right now, so Delta can&apos;t safely create a funded
+                goal at the moment.
+              </p>
+
+              <div className="mt-6 flex justify-center text-center sm:flex-row">
+                <Link
+                  to="/home"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-white px-5 text-sm font-semibold text-slate-950 transition hover:bg-slate-100"
+                >
+                  <ArrowLeft className="size-4" />
+                  Back to dashboard
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </main>
