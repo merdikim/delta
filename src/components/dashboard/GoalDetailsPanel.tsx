@@ -14,7 +14,7 @@ import {
   SUPPORTED_ASSETS,
 } from '#/utils'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { CalendarDays, Coins, Plus } from 'lucide-react'
+import { CalendarDays, Coins, ExternalLink, Plus } from 'lucide-react'
 import type { FormEvent } from 'react'
 import { useEffect, useState } from 'react'
 import { switchChain } from '@wagmi/core'
@@ -50,6 +50,10 @@ function calculateProjectedYield(
 
   const annualRate = annualApyPercent / 100
   return principal * ((1 + annualRate) ** (days / 365) - 1)
+}
+
+function getLifiScanUrl(txHash: string) {
+  return `https://scan.li.fi/tx/${txHash}`
 }
 
 export default function GoalDetailsPanel({
@@ -649,21 +653,28 @@ export default function GoalDetailsPanel({
                 <div className="divide-y divide-slate-200">
                   {goal.deposits.length > 0 ? (
                     goal.deposits.map((deposit) => (
-                      <div
+                      <a
                         key={deposit.id}
-                        className="grid grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)] items-center gap-4 px-4 py-3"
+                        href={getLifiScanUrl(deposit.txHash)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="grid grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)] items-center gap-4 px-4 py-3 transition hover:bg-white/80"
+                        title="Open transaction in LI.FI Scan"
                       >
-                        <p className="text-sm text-slate-600">
-                          {formatDate(deposit.createdAt, {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          })}
-                        </p>
+                        <div className="flex items-center gap-2 text-sm text-slate-600">
+                          <span>
+                            {formatDate(deposit.createdAt, {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}
+                          </span>
+                          <ExternalLink className="size-3.5 text-slate-400" />
+                        </div>
                         <p className="text-right text-sm font-semibold text-slate-950">
                           {formatUsd(deposit.amount)}
                         </p>
-                      </div>
+                      </a>
                     ))
                   ) : (
                     <div className="px-4 py-10 text-center">
