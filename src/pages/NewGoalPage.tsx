@@ -25,6 +25,7 @@ import {
   AlertCircle,
   ArrowLeft,
   Landmark,
+  Pickaxe,
   TrendingUp,
 } from 'lucide-react'
 import type { EarnVault } from '#/types'
@@ -611,7 +612,7 @@ const NewGoalPage = () => {
             <Card className="rounded-3xl border-slate-900/5 py-0 shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
               <CardHeader className="px-5 pt-5 sm:px-6 sm:pt-6">
                 <CardTitle className="flex items-center gap-2 text-xl">
-                  <Landmark className="size-4 text-emerald-300" />
+                  <Pickaxe className="size-4 text-emerald-300" />
                   Protocol yields
                 </CardTitle>
                 <CardDescription className="text-sm leading-5 text-slate-700">
