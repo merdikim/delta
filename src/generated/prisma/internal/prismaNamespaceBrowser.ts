@@ -79,6 +79,7 @@ export const GoalScalarFieldEnum = {
   goalAmount: 'goalAmount',
   selectedVaultName: 'selectedVaultName',
   selectedVaultAddress: 'selectedVaultAddress',
+  selectedVaultChainId: 'selectedVaultChainId',
   selectedProtocol: 'selectedProtocol',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'

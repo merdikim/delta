@@ -4,6 +4,8 @@ import { queryOptions } from '@tanstack/react-query'
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 
+const GOAL_DELETION_BALANCE_THRESHOLD = 0.09
+
 const walletAddressSchema = z.object({
   walletAddress: z.string().min(1),
 })
@@ -14,7 +16,8 @@ const createGoalSchema = z.object({
   currentAmount: z.number().positive(),
   goalAmount: z.number().positive(),
   selectedVaultName: z.string().optional(),
-  selectedVaultAddress: z.string().optional(),
+  selectedVaultAddress: z.string().min(1),
+  selectedVaultChainId: z.number().int().positive().optional(),
   selectedProtocol: z.string().optional(),
   txHash: z.string().min(1),
 })
@@ -31,6 +34,13 @@ const addGoalDepositSchema = z.object({
   txHash: z.string().min(1),
 })
 
+const addGoalWithdrawalSchema = z.object({
+  goalId: z.string().min(1),
+  walletAddress: z.string().min(1),
+  amount: z.number().positive(),
+  txHash: z.string().min(1),
+})
+
 type GoalRecord = {
   id: string
   walletAddress: string
@@ -39,6 +49,7 @@ type GoalRecord = {
   goalAmount: { toString: () => string }
   selectedVaultName: string | null
   selectedVaultAddress?: string | null
+  selectedVaultChainId?: number | null
   selectedProtocol: string | null
   deposits: Array<{
     id: string
@@ -74,7 +85,8 @@ function mapGoal(goal: GoalRecord): Goal {
         : Number(goal.monthlyAmount.toString()),
     goalAmount: Number(goal.goalAmount.toString()),
     selectedVaultName: goal.selectedVaultName ?? undefined,
-    selectedVaultAddress: goal.selectedVaultAddress ?? undefined,
+    selectedVaultAddress: goal.selectedVaultAddress ?? '',
+    selectedVaultChainId: goal.selectedVaultChainId ?? undefined,
     selectedProtocol: goal.selectedProtocol ?? undefined,
     deposits,
     createdAt: goal.createdAt.toISOString(),
@@ -99,49 +111,27 @@ export const listGoals = createServerFn({ method: 'GET' })
 export const createGoal = createServerFn({ method: 'POST' })
   .inputValidator((input) => createGoalSchema.parse(input))
   .handler(async ({ data }): Promise<Goal> => {
-    const baseCreateData = {
-      walletAddress: data.walletAddress,
-      name: data.name,
-      monthlyAmount: data.currentAmount.toFixed(2),
-      goalAmount: data.goalAmount.toFixed(2),
-      selectedVaultName: data.selectedVaultName,
-      selectedProtocol: data.selectedProtocol,
-      deposits: {
-        create: {
-          amount: data.currentAmount.toFixed(2),
-          txHash: data.txHash,
+    const goal = await prisma.goal.create({
+      data: {
+        walletAddress: data.walletAddress,
+        name: data.name,
+        monthlyAmount: data.currentAmount.toFixed(2),
+        goalAmount: data.goalAmount.toFixed(2),
+        selectedVaultName: data.selectedVaultName,
+        selectedVaultAddress: data.selectedVaultAddress,
+        selectedVaultChainId: data.selectedVaultChainId,
+        selectedProtocol: data.selectedProtocol,
+        deposits: {
+          create: {
+            amount: data.currentAmount.toFixed(2),
+            txHash: data.txHash,
+          },
         },
-      }
-    }
+      } as never,
+      include: goalInclude,
+    })
 
-    try {
-      const goal = await prisma.goal.create({
-        data: {
-          ...baseCreateData,
-          ...(data.selectedVaultAddress
-            ? { selectedVaultAddress: data.selectedVaultAddress }
-            : {}),
-        } as never,
-        include: goalInclude,
-      })
-
-      return mapGoal(goal as GoalRecord)
-    } catch (error) {
-      const isMissingSelectedVaultAddressField =
-        error instanceof Error &&
-        error.message.includes('Unknown argument `selectedVaultAddress`')
-
-      if (!isMissingSelectedVaultAddressField) {
-        throw error
-      }
-
-      const goal = await prisma.goal.create({
-        data: baseCreateData as never,
-        include: goalInclude,
-      })
-
-      return mapGoal(goal as GoalRecord)
-    }
+    return mapGoal(goal as GoalRecord)
   })
 
 export const addGoalDeposit = createServerFn({ method: 'POST' })
@@ -175,6 +165,43 @@ export const addGoalDeposit = createServerFn({ method: 'POST' })
     return mapGoal(goal as GoalRecord)
   })
 
+export const addGoalWithdrawal = createServerFn({ method: 'POST' })
+  .inputValidator((input) => addGoalWithdrawalSchema.parse(input))
+  .handler(async ({ data }): Promise<Goal> => {
+    const existingGoal = await prisma.goal.findFirst({
+      where: {
+        id: data.goalId,
+        walletAddress: data.walletAddress,
+      },
+      include: goalInclude,
+    })
+
+    if (!existingGoal) {
+      throw new Error('Goal not found')
+    }
+
+    const currentBalance = mapGoal(existingGoal as GoalRecord).currentAmount
+
+    if (data.amount > currentBalance) {
+      throw new Error('Withdrawal amount exceeds the goal balance')
+    }
+
+    const goal = await prisma.goal.update({
+      where: { id: data.goalId },
+      data: {
+        deposits: {
+          create: {
+            amount: (-data.amount).toFixed(2),
+            txHash: data.txHash,
+          },
+        },
+      },
+      include: goalInclude,
+    })
+
+    return mapGoal(goal as GoalRecord)
+  })
+
 export const deleteGoal = createServerFn({ method: 'POST' })
   .inputValidator((input) => deleteGoalSchema.parse(input))
   .handler(async ({ data }): Promise<{ id: string }> => {
@@ -183,11 +210,17 @@ export const deleteGoal = createServerFn({ method: 'POST' })
         id: data.id,
         walletAddress: data.walletAddress,
       },
-      select: { id: true },
+      include: goalInclude,
     })
 
     if (!existingGoal) {
       throw new Error('Goal not found')
+    }
+
+    const currentBalance = mapGoal(existingGoal as GoalRecord).currentAmount
+
+    if (currentBalance >= GOAL_DELETION_BALANCE_THRESHOLD) {
+      throw new Error('Withdraw funds below $0.09 before deleting this goal')
     }
 
     await prisma.goal.delete({

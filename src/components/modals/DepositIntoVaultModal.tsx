@@ -1,5 +1,5 @@
 import type { EarnVault, Goal } from '#/types'
-import { formatUsd } from '#/utils'
+import { formatUsd, SUPPORTED_ASSETS } from '#/utils'
 import { X } from 'lucide-react'
 import type { FormEvent } from 'react'
 
@@ -22,7 +22,6 @@ type DepositIntoVaultModalProps = {
   error?: string
   tokenSymbol: string
   tokenDecimals: number
-  destinationChainLabel: string
   fundingChainOptions: FundingChainOption[]
   selectedFundingChainId: number
   onSelectFundingChain: (chainId: number) => void
@@ -47,7 +46,6 @@ export default function DepositIntoVaultModal({
   error,
   tokenSymbol,
   tokenDecimals,
-  destinationChainLabel,
   fundingChainOptions,
   selectedFundingChainId,
   onSelectFundingChain,
@@ -63,6 +61,13 @@ export default function DepositIntoVaultModal({
   if (!isOpen) {
     return null
   }
+
+  const destinationChainLabel =
+    Object.values(SUPPORTED_ASSETS.networks).find(
+      (network) => network.id === vault?.chainId,
+    )?.label ??
+    vault?.network ??
+    'the goal vault chain'
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-6 backdrop-blur-sm">

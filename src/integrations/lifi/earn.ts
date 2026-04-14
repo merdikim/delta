@@ -163,7 +163,7 @@ export function earnPortfolioPositionsQueryOptions(walletAddress: string) {
   })
 }
 
-export async function depositToVault({
+export async function executeVaultQuote({
   quote,
   account,
   chainId,
@@ -233,4 +233,22 @@ export async function depositToVault({
   })
 
   return txHash
+}
+
+export async function depositToVault(args: {
+  quote: Pick<ComposerQuote, 'action' | 'estimate' | 'transactionRequest'>
+  account: Address
+  chainId: number
+  config: ReturnType<typeof useConfig>
+}) {
+  return executeVaultQuote(args)
+}
+
+export async function withdrawFromVault(args: {
+  quote: Pick<ComposerQuote, 'action' | 'estimate' | 'transactionRequest'>
+  account: Address
+  chainId: number
+  config: ReturnType<typeof useConfig>
+}) {
+  return executeVaultQuote(args)
 }

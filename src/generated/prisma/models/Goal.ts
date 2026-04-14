@@ -29,11 +29,13 @@ export type AggregateGoal = {
 export type GoalAvgAggregateOutputType = {
   monthlyAmount: runtime.Decimal | null
   goalAmount: runtime.Decimal | null
+  selectedVaultChainId: number | null
 }
 
 export type GoalSumAggregateOutputType = {
   monthlyAmount: runtime.Decimal | null
   goalAmount: runtime.Decimal | null
+  selectedVaultChainId: number | null
 }
 
 export type GoalMinAggregateOutputType = {
@@ -44,6 +46,7 @@ export type GoalMinAggregateOutputType = {
   goalAmount: runtime.Decimal | null
   selectedVaultName: string | null
   selectedVaultAddress: string | null
+  selectedVaultChainId: number | null
   selectedProtocol: string | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -57,6 +60,7 @@ export type GoalMaxAggregateOutputType = {
   goalAmount: runtime.Decimal | null
   selectedVaultName: string | null
   selectedVaultAddress: string | null
+  selectedVaultChainId: number | null
   selectedProtocol: string | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -70,6 +74,7 @@ export type GoalCountAggregateOutputType = {
   goalAmount: number
   selectedVaultName: number
   selectedVaultAddress: number
+  selectedVaultChainId: number
   selectedProtocol: number
   createdAt: number
   updatedAt: number
@@ -80,11 +85,13 @@ export type GoalCountAggregateOutputType = {
 export type GoalAvgAggregateInputType = {
   monthlyAmount?: true
   goalAmount?: true
+  selectedVaultChainId?: true
 }
 
 export type GoalSumAggregateInputType = {
   monthlyAmount?: true
   goalAmount?: true
+  selectedVaultChainId?: true
 }
 
 export type GoalMinAggregateInputType = {
@@ -95,6 +102,7 @@ export type GoalMinAggregateInputType = {
   goalAmount?: true
   selectedVaultName?: true
   selectedVaultAddress?: true
+  selectedVaultChainId?: true
   selectedProtocol?: true
   createdAt?: true
   updatedAt?: true
@@ -108,6 +116,7 @@ export type GoalMaxAggregateInputType = {
   goalAmount?: true
   selectedVaultName?: true
   selectedVaultAddress?: true
+  selectedVaultChainId?: true
   selectedProtocol?: true
   createdAt?: true
   updatedAt?: true
@@ -121,6 +130,7 @@ export type GoalCountAggregateInputType = {
   goalAmount?: true
   selectedVaultName?: true
   selectedVaultAddress?: true
+  selectedVaultChainId?: true
   selectedProtocol?: true
   createdAt?: true
   updatedAt?: true
@@ -221,6 +231,7 @@ export type GoalGroupByOutputType = {
   goalAmount: runtime.Decimal
   selectedVaultName: string | null
   selectedVaultAddress: string | null
+  selectedVaultChainId: number | null
   selectedProtocol: string | null
   createdAt: Date
   updatedAt: Date
@@ -257,6 +268,7 @@ export type GoalWhereInput = {
   goalAmount?: Prisma.DecimalFilter<"Goal"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   selectedVaultName?: Prisma.StringNullableFilter<"Goal"> | string | null
   selectedVaultAddress?: Prisma.StringNullableFilter<"Goal"> | string | null
+  selectedVaultChainId?: Prisma.IntNullableFilter<"Goal"> | number | null
   selectedProtocol?: Prisma.StringNullableFilter<"Goal"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Goal"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Goal"> | Date | string
@@ -271,6 +283,7 @@ export type GoalOrderByWithRelationInput = {
   goalAmount?: Prisma.SortOrder
   selectedVaultName?: Prisma.SortOrderInput | Prisma.SortOrder
   selectedVaultAddress?: Prisma.SortOrderInput | Prisma.SortOrder
+  selectedVaultChainId?: Prisma.SortOrderInput | Prisma.SortOrder
   selectedProtocol?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -288,6 +301,7 @@ export type GoalWhereUniqueInput = Prisma.AtLeast<{
   goalAmount?: Prisma.DecimalFilter<"Goal"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   selectedVaultName?: Prisma.StringNullableFilter<"Goal"> | string | null
   selectedVaultAddress?: Prisma.StringNullableFilter<"Goal"> | string | null
+  selectedVaultChainId?: Prisma.IntNullableFilter<"Goal"> | number | null
   selectedProtocol?: Prisma.StringNullableFilter<"Goal"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Goal"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Goal"> | Date | string
@@ -302,6 +316,7 @@ export type GoalOrderByWithAggregationInput = {
   goalAmount?: Prisma.SortOrder
   selectedVaultName?: Prisma.SortOrderInput | Prisma.SortOrder
   selectedVaultAddress?: Prisma.SortOrderInput | Prisma.SortOrder
+  selectedVaultChainId?: Prisma.SortOrderInput | Prisma.SortOrder
   selectedProtocol?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -323,6 +338,7 @@ export type GoalScalarWhereWithAggregatesInput = {
   goalAmount?: Prisma.DecimalWithAggregatesFilter<"Goal"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   selectedVaultName?: Prisma.StringNullableWithAggregatesFilter<"Goal"> | string | null
   selectedVaultAddress?: Prisma.StringNullableWithAggregatesFilter<"Goal"> | string | null
+  selectedVaultChainId?: Prisma.IntNullableWithAggregatesFilter<"Goal"> | number | null
   selectedProtocol?: Prisma.StringNullableWithAggregatesFilter<"Goal"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Goal"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Goal"> | Date | string
@@ -336,6 +352,7 @@ export type GoalCreateInput = {
   goalAmount: runtime.Decimal | runtime.DecimalJsLike | number | string
   selectedVaultName?: string | null
   selectedVaultAddress?: string | null
+  selectedVaultChainId?: number | null
   selectedProtocol?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -350,6 +367,7 @@ export type GoalUncheckedCreateInput = {
   goalAmount: runtime.Decimal | runtime.DecimalJsLike | number | string
   selectedVaultName?: string | null
   selectedVaultAddress?: string | null
+  selectedVaultChainId?: number | null
   selectedProtocol?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -364,6 +382,7 @@ export type GoalUpdateInput = {
   goalAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   selectedVaultName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   selectedVaultAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  selectedVaultChainId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   selectedProtocol?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -378,6 +397,7 @@ export type GoalUncheckedUpdateInput = {
   goalAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   selectedVaultName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   selectedVaultAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  selectedVaultChainId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   selectedProtocol?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -392,6 +412,7 @@ export type GoalCreateManyInput = {
   goalAmount: runtime.Decimal | runtime.DecimalJsLike | number | string
   selectedVaultName?: string | null
   selectedVaultAddress?: string | null
+  selectedVaultChainId?: number | null
   selectedProtocol?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -405,6 +426,7 @@ export type GoalUpdateManyMutationInput = {
   goalAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   selectedVaultName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   selectedVaultAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  selectedVaultChainId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   selectedProtocol?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -418,6 +440,7 @@ export type GoalUncheckedUpdateManyInput = {
   goalAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   selectedVaultName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   selectedVaultAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  selectedVaultChainId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   selectedProtocol?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -431,6 +454,7 @@ export type GoalCountOrderByAggregateInput = {
   goalAmount?: Prisma.SortOrder
   selectedVaultName?: Prisma.SortOrder
   selectedVaultAddress?: Prisma.SortOrder
+  selectedVaultChainId?: Prisma.SortOrder
   selectedProtocol?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -439,6 +463,7 @@ export type GoalCountOrderByAggregateInput = {
 export type GoalAvgOrderByAggregateInput = {
   monthlyAmount?: Prisma.SortOrder
   goalAmount?: Prisma.SortOrder
+  selectedVaultChainId?: Prisma.SortOrder
 }
 
 export type GoalMaxOrderByAggregateInput = {
@@ -449,6 +474,7 @@ export type GoalMaxOrderByAggregateInput = {
   goalAmount?: Prisma.SortOrder
   selectedVaultName?: Prisma.SortOrder
   selectedVaultAddress?: Prisma.SortOrder
+  selectedVaultChainId?: Prisma.SortOrder
   selectedProtocol?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -462,6 +488,7 @@ export type GoalMinOrderByAggregateInput = {
   goalAmount?: Prisma.SortOrder
   selectedVaultName?: Prisma.SortOrder
   selectedVaultAddress?: Prisma.SortOrder
+  selectedVaultChainId?: Prisma.SortOrder
   selectedProtocol?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -470,6 +497,7 @@ export type GoalMinOrderByAggregateInput = {
 export type GoalSumOrderByAggregateInput = {
   monthlyAmount?: Prisma.SortOrder
   goalAmount?: Prisma.SortOrder
+  selectedVaultChainId?: Prisma.SortOrder
 }
 
 export type GoalScalarRelationFilter = {
@@ -491,6 +519,14 @@ export type DecimalFieldUpdateOperationsInput = {
 
 export type NullableStringFieldUpdateOperationsInput = {
   set?: string | null
+}
+
+export type NullableIntFieldUpdateOperationsInput = {
+  set?: number | null
+  increment?: number
+  decrement?: number
+  multiply?: number
+  divide?: number
 }
 
 export type DateTimeFieldUpdateOperationsInput = {
@@ -519,6 +555,7 @@ export type GoalCreateWithoutDepositsInput = {
   goalAmount: runtime.Decimal | runtime.DecimalJsLike | number | string
   selectedVaultName?: string | null
   selectedVaultAddress?: string | null
+  selectedVaultChainId?: number | null
   selectedProtocol?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -532,6 +569,7 @@ export type GoalUncheckedCreateWithoutDepositsInput = {
   goalAmount: runtime.Decimal | runtime.DecimalJsLike | number | string
   selectedVaultName?: string | null
   selectedVaultAddress?: string | null
+  selectedVaultChainId?: number | null
   selectedProtocol?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -561,6 +599,7 @@ export type GoalUpdateWithoutDepositsInput = {
   goalAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   selectedVaultName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   selectedVaultAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  selectedVaultChainId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   selectedProtocol?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -574,6 +613,7 @@ export type GoalUncheckedUpdateWithoutDepositsInput = {
   goalAmount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   selectedVaultName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   selectedVaultAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  selectedVaultChainId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   selectedProtocol?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -618,6 +658,7 @@ export type GoalSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   goalAmount?: boolean
   selectedVaultName?: boolean
   selectedVaultAddress?: boolean
+  selectedVaultChainId?: boolean
   selectedProtocol?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -633,6 +674,7 @@ export type GoalSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   goalAmount?: boolean
   selectedVaultName?: boolean
   selectedVaultAddress?: boolean
+  selectedVaultChainId?: boolean
   selectedProtocol?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -646,6 +688,7 @@ export type GoalSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   goalAmount?: boolean
   selectedVaultName?: boolean
   selectedVaultAddress?: boolean
+  selectedVaultChainId?: boolean
   selectedProtocol?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -659,12 +702,13 @@ export type GoalSelectScalar = {
   goalAmount?: boolean
   selectedVaultName?: boolean
   selectedVaultAddress?: boolean
+  selectedVaultChainId?: boolean
   selectedProtocol?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type GoalOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "walletAddress" | "name" | "monthlyAmount" | "goalAmount" | "selectedVaultName" | "selectedVaultAddress" | "selectedProtocol" | "createdAt" | "updatedAt", ExtArgs["result"]["goal"]>
+export type GoalOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "walletAddress" | "name" | "monthlyAmount" | "goalAmount" | "selectedVaultName" | "selectedVaultAddress" | "selectedVaultChainId" | "selectedProtocol" | "createdAt" | "updatedAt", ExtArgs["result"]["goal"]>
 export type GoalInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   deposits?: boolean | Prisma.Goal$depositsArgs<ExtArgs>
   _count?: boolean | Prisma.GoalCountOutputTypeDefaultArgs<ExtArgs>
@@ -685,6 +729,7 @@ export type $GoalPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     goalAmount: runtime.Decimal
     selectedVaultName: string | null
     selectedVaultAddress: string | null
+    selectedVaultChainId: number | null
     selectedProtocol: string | null
     createdAt: Date
     updatedAt: Date
@@ -1119,6 +1164,7 @@ export interface GoalFieldRefs {
   readonly goalAmount: Prisma.FieldRef<"Goal", 'Decimal'>
   readonly selectedVaultName: Prisma.FieldRef<"Goal", 'String'>
   readonly selectedVaultAddress: Prisma.FieldRef<"Goal", 'String'>
+  readonly selectedVaultChainId: Prisma.FieldRef<"Goal", 'Int'>
   readonly selectedProtocol: Prisma.FieldRef<"Goal", 'String'>
   readonly createdAt: Prisma.FieldRef<"Goal", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Goal", 'DateTime'>

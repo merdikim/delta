@@ -264,6 +264,12 @@ const NewGoalPage = () => {
 
   useEffect(() => {
     const preferredChainId =
+      fundingChainOptions.find(
+        (network) => network.id === selectedFundingChainId,
+      )?.id ??
+      fundingChainOptions.find(
+        (network) => network.id === selectedVault.chainId,
+      )?.id ??
       fundingChainOptions.find((network) => network.id === chainId)?.id ??
       fundingChainOptions[0]?.id ??
       fallbackFundingChainId
@@ -337,6 +343,7 @@ const NewGoalPage = () => {
           goalAmount: targetAmount,
           selectedVaultName: selectedVault.name,
           selectedVaultAddress: selectedVault.address,
+          selectedVaultChainId: selectedVault.chainId,
           selectedProtocol: selectedVault.protocol.name,
           txHash,
         },

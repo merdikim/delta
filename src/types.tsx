@@ -12,7 +12,8 @@ export type Goal = {
   currentAmount: number
   goalAmount: number
   selectedVaultName?: string
-  selectedVaultAddress?: string
+  selectedVaultAddress: string
+  selectedVaultChainId?: number
   selectedProtocol?: string
   deposits: GoalDeposit[]
   createdAt: string

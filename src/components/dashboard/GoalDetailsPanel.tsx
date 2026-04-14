@@ -6,7 +6,7 @@ import {
   depositToVault,
   earnPortfolioPositionsQueryOptions,
 } from '#/integrations/lifi/earn'
-import type { EarnPortfolioPosition, EarnVault, Goal } from '#/types'
+import type { EarnVault, Goal } from '#/types'
 import {
   formatDate,
   formatTokenBalance,
@@ -54,12 +54,10 @@ function calculateProjectedYield(
 
 export default function GoalDetailsPanel({
   goal,
-  positions = [],
   vault,
   isLoading = false,
 }: {
   goal?: Goal
-  positions?: EarnPortfolioPosition[]
   vault?: EarnVault
   isLoading?: boolean
 }) {
@@ -156,10 +154,6 @@ export default function GoalDetailsPanel({
     (token) => token.symbol === selectedVaultTokenSymbol,
   )
   const selectedTokenDecimals = selectedSupportedToken?.decimals ?? 6
-  const selectedVaultNetwork = supportedNetworks.find(
-    (network) => network.id === vault?.chainId,
-  )
-  const destinationChainLabel = selectedVaultNetwork?.label ?? vault?.network ?? 'the destination chain'
   const projectedPrincipal = currentAmount
   const sevenDayApyPercent = vault?.analytics.apy7d ?? 0
   const oneMonthApyPercent = vault?.analytics.apy30d ?? 0
@@ -255,6 +249,13 @@ export default function GoalDetailsPanel({
   useEffect(() => {
     const preferredChainId =
       fundingChainOptions.find(
+        (network) =>
+          network.id === selectedFundingChainId && network.isAvailable,
+      )?.id ??
+      fundingChainOptions.find(
+        (network) => network.id === vault?.chainId && network.isAvailable,
+      )?.id ??
+      fundingChainOptions.find(
         (network) => network.id === chainId && network.isAvailable,
       )?.id ??
       fundingChainOptions.find((network) => network.isAvailable)?.id ??
@@ -268,6 +269,7 @@ export default function GoalDetailsPanel({
     fallbackFundingChainId,
     fundingChainOptions,
     selectedFundingChainId,
+    vault?.chainId,
   ])
 
   const addPositionMutation = useMutation({
@@ -431,7 +433,6 @@ export default function GoalDetailsPanel({
         }
         tokenSymbol={selectedVaultTokenSymbol}
         tokenDecimals={selectedTokenDecimals}
-        destinationChainLabel={destinationChainLabel}
         fundingChainOptions={fundingChainOptions}
         selectedFundingChainId={selectedFundingChain.id}
         onSelectFundingChain={setSelectedFundingChainId}
@@ -631,7 +632,6 @@ export default function GoalDetailsPanel({
                     setIsAddPositionModalOpen(true)
                   }}
                   className="flex items-center justify-between rounded-2xl border border-primary bg-primary p-2 text-left transition hover:bg-emerald-500"
-                  disabled={!hasSelectedVault}
                 >
                   <div className='flex items-center justify-between w-full'>
                     <p className=" font-semibold text-white">Add amount</p>

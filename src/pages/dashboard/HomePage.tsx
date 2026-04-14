@@ -1,24 +1,44 @@
 import GoalDetailsPanel from '#/components/dashboard/GoalDetailsPanel'
 import GoalCard from '#/components/cards/GoalCard'
-import { deleteGoal, goalsQueryOptions } from '#/integrations/goals/goals'
+import DeleteGoalModal from '#/components/modals/DeleteGoalModal'
+import { addGoalWithdrawal, deleteGoal, goalsQueryOptions } from '#/integrations/goals/goals'
+import { getComposerQuote } from '#/integrations/lifi/composer'
 import {
+  withdrawFromVault,
   earnPortfolioPositionsQueryOptions,
   earnVaultsQueryOptions,
 } from '#/integrations/lifi/earn'
-import type { EarnPortfolioPosition, EarnVault, Goal } from '#/types'
+import type { EarnVault, Goal } from '#/types'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
-import { useAccount } from 'wagmi'
+import { useAccount, useConfig } from 'wagmi'
+import { parseUnits, zeroAddress } from 'viem'
+import { switchChain } from '@wagmi/core'
 import { cn } from '#/lib/utils'
 import { ArrowRight, Goal as GoalIcon, Sparkles, Target } from 'lucide-react'
 import SectionBadge from '#/components/cards/SectionBadge'
+import { SUPPORTED_ASSETS } from '#/utils'
 
-function normalize(value?: string) {
-  return value
-    ?.trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '')
+function resolveGoalVault({
+  goal,
+  vaults,
+}: {
+  goal?: Goal | null
+  vaults: EarnVault[]
+}) {
+  if (!goal?.selectedVaultAddress) {
+    return undefined
+  }
+
+  const selectedVaultAddress = goal.selectedVaultAddress.toLowerCase()
+
+  return vaults.find(
+    (vault) =>
+      vault.address.toLowerCase() === selectedVaultAddress &&
+      (goal.selectedVaultChainId == null ||
+        vault.chainId === goal.selectedVaultChainId),
+  )
 }
 
 function GoalCardSkeleton() {
@@ -41,17 +61,20 @@ function GoalCardSkeleton() {
 
 const HomePage = () => {
   const queryClient = useQueryClient()
-  const { address } = useAccount()
+  const config = useConfig()
+  const { address, chainId } = useAccount()
   const { data: goals = [], isPending: isGoalsLoading } = useQuery<Goal[]>({
     ...goalsQueryOptions(address ?? ''),
     enabled: Boolean(address),
   })
   const { data: vaults = [] } = useQuery<EarnVault[]>(earnVaultsQueryOptions())
-  const { data: portfolioPositions = [] } = useQuery<EarnPortfolioPosition[]>({
-    ...earnPortfolioPositionsQueryOptions(address ?? ''),
-    enabled: Boolean(address),
-  })
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null)
+  const [goalPendingDeletion, setGoalPendingDeletion] = useState<Goal | null>(
+    null,
+  )
+  const [withdrawAmount, setWithdrawAmount] = useState('0')
+  const [withdrawDestinationChainId, setWithdrawDestinationChainId] =
+    useState<number>(SUPPORTED_ASSETS.networks.base.id)
 
   const deleteGoalMutation = useMutation({
     mutationFn: async (goalId: string) => {
@@ -70,6 +93,10 @@ const HomePage = () => {
       if (selectedGoalId === goalId) {
         setSelectedGoalId(null)
       }
+
+      setGoalPendingDeletion((currentGoal) =>
+        currentGoal?.id === goalId ? null : currentGoal,
+      )
 
       if (address) {
         await queryClient.invalidateQueries(goalsQueryOptions(address))
@@ -91,45 +118,116 @@ const HomePage = () => {
 
   const selectedGoal = goals.find((goal) => goal.id === selectedGoalId)
   const activeGoal = selectedGoal ?? goals[0]
-  const normalizedGoalProtocol = normalize(activeGoal?.selectedProtocol)
-  const normalizedVaultName = normalize(activeGoal?.selectedVaultName)
-  const matchingPositionChainIds = new Set(
-    portfolioPositions
-      .filter((position) => {
-        const normalizedProtocol = normalize(position.protocolName)
-        const normalizedAssetName = normalize(position.asset.name)
-        const normalizedAssetSymbol = normalize(position.asset.symbol)
+  const activeGoalVault = resolveGoalVault({
+    goal: activeGoal,
+    vaults,
+  })
+  const goalPendingDeletionVault = resolveGoalVault({
+    goal: goalPendingDeletion,
+    vaults,
+  })
+  const destinationChainOptions = Object.values(SUPPORTED_ASSETS.networks).map(
+    (network) => ({
+      id: network.id,
+      label: network.label,
+    }),
+  )
+  const withdrawDestinationChain =
+    Object.values(SUPPORTED_ASSETS.networks).find(
+      (network) => network.id === withdrawDestinationChainId,
+    ) ?? SUPPORTED_ASSETS.networks.base
+  const withdrawalAmountNumber = Number(withdrawAmount) || 0
 
-        const protocolMatches = normalizedGoalProtocol
-          ? normalizedProtocol === normalizedGoalProtocol
-          : false
-        const assetMatches = normalizedVaultName
-          ? normalizedAssetName === normalizedVaultName ||
-            normalizedAssetSymbol === normalizedVaultName ||
-            normalizedAssetName?.includes(normalizedVaultName) ||
-            normalizedVaultName.includes(normalizedAssetName ?? '')
-          : false
+  useEffect(() => {
+    if (!goalPendingDeletion) {
+      setWithdrawAmount('0')
+      setWithdrawDestinationChainId(SUPPORTED_ASSETS.networks.base.id)
+      return
+    }
 
-        return protocolMatches || assetMatches
+    setWithdrawAmount(goalPendingDeletion.currentAmount.toFixed(2))
+    setWithdrawDestinationChainId(SUPPORTED_ASSETS.networks.base.id)
+  }, [goalPendingDeletion])
+
+  const withdrawMutation = useMutation({
+    mutationFn: async () => {
+      if (!address || !goalPendingDeletion || !goalPendingDeletionVault) {
+        throw new Error('Wallet, goal, or vault missing')
+      }
+
+      const withdrawToken =
+        goalPendingDeletionVault.underlyingTokens[0]?.symbol.toUpperCase() ??
+        'USDC'
+      const supportedToken = Object.values(SUPPORTED_ASSETS.tokens).find(
+        (token) => token.symbol === withdrawToken,
+      )
+      const toToken =
+        withdrawToken === 'ETH'
+          ? zeroAddress
+          : supportedToken && 'addresses' in supportedToken
+            ? supportedToken.addresses[withdrawDestinationChain.key]
+            : undefined
+
+      if (!toToken) {
+        throw new Error(`Unable to withdraw ${withdrawToken} to this chain.`)
+      }
+
+      const quoteDecimals =
+        goalPendingDeletionVault.lpTokens[0]?.decimals ??
+        supportedToken?.decimals ??
+        goalPendingDeletionVault.underlyingTokens[0]?.decimals ??
+        6
+
+      const quote = await getComposerQuote({
+        data: {
+          fromChain: goalPendingDeletionVault.chainId,
+          toChain: withdrawDestinationChain.id,
+          fromToken: goalPendingDeletionVault.address,
+          toToken,
+          fromAddress: address,
+          toAddress: address,
+          fromAmount: parseUnits(withdrawAmount, quoteDecimals).toString(),
+        },
       })
-      .map((position) => position.chainId),
-  )
-  const fallbackVaultMatches = vaults.filter(
-    (vault) =>
-      vault.name === activeGoal?.selectedVaultName &&
-      vault.protocol.name === activeGoal?.selectedProtocol,
-  )
-  const activeGoalVault =
-    vaults.find(
-      (vault) =>
-        activeGoal?.selectedVaultAddress &&
-        vault.address.toLowerCase() ===
-          activeGoal.selectedVaultAddress.toLowerCase(),
-    ) ??
-    fallbackVaultMatches.find((vault) =>
-      matchingPositionChainIds.has(vault.chainId),
-    ) ??
-    fallbackVaultMatches[0]
+
+      if (chainId !== goalPendingDeletionVault.chainId) {
+        await switchChain(config, { chainId: goalPendingDeletionVault.chainId })
+      }
+
+      const txHash = await withdrawFromVault({
+        quote,
+        account: address,
+        chainId: goalPendingDeletionVault.chainId,
+        config,
+      })
+
+      return addGoalWithdrawal({
+        data: {
+          goalId: goalPendingDeletion.id,
+          walletAddress: address,
+          amount: withdrawalAmountNumber,
+          txHash,
+        },
+      })
+    },
+    onSuccess: async (updatedGoal) => {
+      if (address) {
+        await queryClient.invalidateQueries(goalsQueryOptions(address))
+        await queryClient.invalidateQueries(
+          earnPortfolioPositionsQueryOptions(address),
+        )
+      }
+
+      setGoalPendingDeletion(updatedGoal)
+      setWithdrawAmount(Math.max(updatedGoal.currentAmount, 0).toFixed(2))
+    },
+  })
+
+  const handleCloseDeleteModal = () => {
+    withdrawMutation.reset()
+    deleteGoalMutation.reset()
+    setGoalPendingDeletion(null)
+  }
 
   return (
     <div className="h-[calc(100vh-var(--navbar-height))] w-screen px-6 lg:px-8">
@@ -161,9 +259,7 @@ const HomePage = () => {
                     goal={goal}
                     isSelected={goal.id === (selectedGoalId ?? goals[0].id)}
                     onClick={() => setSelectedGoalId(goal.id)}
-                    onDelete={(goalToDelete) => {
-                      void deleteGoalMutation.mutateAsync(goalToDelete.id)
-                    }}
+                    onDelete={setGoalPendingDeletion}
                     isDeleting={
                       deleteGoalMutation.isPending &&
                       deleteGoalMutation.variables === goal.id
@@ -242,11 +338,38 @@ const HomePage = () => {
 
         <GoalDetailsPanel
           goal={isGoalsLoading ? undefined : activeGoal}
-          positions={portfolioPositions}
           vault={activeGoalVault}
           isLoading={isGoalsLoading}
         />
       </div>
+
+      <DeleteGoalModal
+        goal={goalPendingDeletion}
+        vault={goalPendingDeletionVault}
+        isOpen={Boolean(goalPendingDeletion)}
+        isDeleting={deleteGoalMutation.isPending}
+        isWithdrawing={withdrawMutation.isPending}
+        withdrawAmount={withdrawAmount}
+        withdrawAmountNumber={withdrawalAmountNumber}
+        withdrawError={
+          withdrawMutation.error instanceof Error
+            ? withdrawMutation.error.message
+            : withdrawMutation.isError
+              ? 'Unable to withdraw from this goal right now.'
+              : undefined
+        }
+        destinationChainOptions={destinationChainOptions}
+        selectedDestinationChainId={withdrawDestinationChainId}
+        onSelectDestinationChain={setWithdrawDestinationChainId}
+        onWithdrawAmountChange={setWithdrawAmount}
+        onClose={handleCloseDeleteModal}
+        onConfirmDelete={(goal) => {
+          void deleteGoalMutation.mutateAsync(goal.id)
+        }}
+        onWithdraw={() => {
+          void withdrawMutation.mutateAsync()
+        }}
+      />
     </div>
   )
 }

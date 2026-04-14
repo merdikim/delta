@@ -8,17 +8,18 @@ datasource db {
 }
 
 model Goal {
-  id                String   @id @default(cuid())
-  walletAddress     String
-  name              String
-  monthlyAmount     Decimal  @db.Decimal(18, 2)
-  goalAmount        Decimal  @db.Decimal(18, 2)
-  selectedVaultName String?
+  id                    String   @id @default(cuid())
+  walletAddress         String
+  name                  String
+  monthlyAmount         Decimal  @db.Decimal(18, 2)
+  goalAmount            Decimal  @db.Decimal(18, 2)
+  selectedVaultName     String?
   selectedVaultAddress String?
-  selectedProtocol  String?
-  deposits          GoalDeposit[]
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  selectedVaultChainId Int?
+  selectedProtocol     String?
+  deposits             GoalDeposit[]
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   @@index([walletAddress, createdAt(sort: Desc)])
 }
