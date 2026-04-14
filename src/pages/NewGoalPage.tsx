@@ -39,7 +39,6 @@ import { Link, useNavigate } from '@tanstack/react-router'
 import { useAccount, useBalance, useConfig, useReadContracts } from 'wagmi'
 import { switchChain } from '@wagmi/core'
 import { erc20Abi, parseUnits, zeroAddress } from 'viem'
-import type { Address } from 'viem'
 
 const NewGoalPage = () => {
   const navigate = useNavigate()
@@ -140,6 +139,54 @@ const NewGoalPage = () => {
       </main>
     )
   }
+
+  const mobileOnlyState = (
+    <main className="min-h-[calc(100vh-var(--navbar-height))] px-4 py-6 md:hidden">
+      <div className="mx-auto flex min-h-[calc(100vh-var(--navbar-height)-3rem)] max-w-xl items-center justify-center">
+        <div className="w-full rounded-4xl border border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.94),rgba(241,245,249,0.84))] p-6 text-center shadow-[0_24px_80px_rgba(15,23,42,0.12)] backdrop-blur sm:p-8">
+          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-900">
+            <Landmark className="size-3.5" />
+            Better on desktop
+          </div>
+
+          <h1 className="mt-4 text-2xl font-semibold leading-tight text-slate-950">
+            Build your goal plan on a larger screen.
+          </h1>
+
+          <p className="mt-4 text-sm leading-7 text-slate-600 sm:text-base">
+            Delta&apos;s goal setup is designed to feel calmer on a laptop,
+            where comparing vault options, funding routes, and balances is much
+            easier to scan in one view.
+          </p>
+
+          <div className="mt-5 rounded-3xl border border-white/70 bg-white/70 p-4 text-left shadow-[0_16px_44px_rgba(15,23,42,0.06)]">
+            <div className="flex items-start gap-3">
+              <TrendingUp className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+              <div>
+                <p className="text-sm font-medium text-slate-950">
+                  Pick up on desktop
+                </p>
+                <p className="mt-1 text-sm leading-6 text-slate-600">
+                  You&apos;ll get the full planning flow with vault selection,
+                  funding routes, and deposit details laid out more clearly.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 flex justify-center">
+            <Link
+              to="/home"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800"
+            >
+              <ArrowLeft className="size-4" />
+              Return to dashboard
+            </Link>
+          </div>
+        </div>
+      </div>
+    </main>
+  )
 
   const topVault = vaults[0]
   const selectedVault = vaults[selectedVaultIndex] ?? topVault
@@ -330,22 +377,23 @@ const NewGoalPage = () => {
   }
 
   return (
-    <main className="h-screen overflow-hidden px-4 sm:px-5 lg:px-6">
-      <CreateGoalPendingModal
-        isOpen={createGoalMutation.isPending}
-        isWaitingForTxHash={
-          createGoalMutation.isPending && goalCreationStage !== 'database'
-        }
-        isWaitingForDatabase={goalCreationStage === 'database'}
-      />
-      <SuccessModal
-        isOpen={showSuccessState}
-        goalName={goalName}
-        confettiPieces={confettiPieces}
-      />
-      <div className="mx-auto flex h-full max-w-7xl flex-col">
-
-        <div className="grid min-h-0 flex-1 gap-4 py-4 lg:grid-cols-[1.05fr_0.95fr]">
+    <>
+      {mobileOnlyState}
+      <main className="hidden h-screen overflow-hidden px-4 sm:px-5 lg:px-6 md:block">
+        <CreateGoalPendingModal
+          isOpen={createGoalMutation.isPending}
+          isWaitingForTxHash={
+            createGoalMutation.isPending && goalCreationStage !== 'database'
+          }
+          isWaitingForDatabase={goalCreationStage === 'database'}
+        />
+        <SuccessModal
+          isOpen={showSuccessState}
+          goalName={goalName}
+          confettiPieces={confettiPieces}
+        />
+        <div className="mx-auto flex h-full max-w-7xl flex-col">
+          <div className="grid min-h-0 flex-1 gap-4 py-4 md:grid-cols-[1.05fr_0.95fr]">
           <section className="min-h-0 space-y-4">
             <Card className="rounded-3xl border-white/70 bg-white/80 py-0 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur">
               <CardHeader className="px-5 pt-5 sm:px-6 sm:pt-6">
@@ -616,8 +664,9 @@ const NewGoalPage = () => {
             </Card>
           </section>
         </div>
-      </div>
-    </main>
+        </div>
+      </main>
+    </>
   )
 }
 

@@ -1,5 +1,4 @@
 import { Button } from '#/components/ui/button'
-import { cn } from '#/lib/utils'
 import { Link } from '@tanstack/react-router'
 import {
   PiggyBank,
@@ -34,22 +33,23 @@ function StepCard({
 const LandingPage = () => {
 
   return (
-    <main className="relative h-screen px-5 py-6 text-slate-950 sm:px-6 lg:px-8">
+    <main className="relative min-h-screen flex flex-col justify-center px-5 py-6 text-slate-950 sm:px-6 lg:px-8">
       <div className="relative mx-auto max-w-7xl">
         <section className="p-8 lg:p-10">
           <div className="animate-in fade-in slide-in-from-bottom-4 w-full flex duration-700">
-            <div>
+            <div className='text-center lg:text-start'>
               <SectionBadge badge={<Sparkles className="size-3.5" />} text='Plan the target, then let the yield do more work'/>
 
               <h1 className="mt-6 text-5xl font-semibold leading-[1.02] tracking-[-0.04em] sm:text-6xl lg:text-7xl">
                 Your financial goals change from <span className='line-through decoration-3 decoration-destructive'>someday</span> to a <span className="text-emerald-600">funded plan</span>
               </h1>
-
-              <p className="mt-6 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">
-                Built for people who want their money to grow without lifting a finger.
-                Set a target, deposit into a vault, and watch the progress, and
-                projected growth in one place.
-              </p>
+              <div className='w-full flex justify-center lg:justify-start'>
+                <p className="mt-6 max-w-2xl text-base w-full leading-8 text-slate-600 sm:text-lg">
+                  Built for people who want their money to grow without lifting a finger.
+                  Set a target, deposit into a vault, and watch the progress, and
+                  projected growth in one place.
+                </p>
+              </div>
 
               <div className="my-8">
                 <Button asChild size="lg" className="w-87.5">

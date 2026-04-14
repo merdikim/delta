@@ -32,12 +32,12 @@ function StatCard({ label, value }: { label: string; value: string }) {
   )
 }
 
-function normalize(value?: string) {
-  return value
-    ?.trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '')
-}
+// function normalize(value?: string) {
+//   return value
+//     ?.trim()
+//     .toLowerCase()
+//     .replace(/[^a-z0-9]+/g, '')
+// }
 
 function calculateProjectedYield(
   principal: number,
@@ -55,13 +55,11 @@ function calculateProjectedYield(
 export default function GoalDetailsPanel({
   goal,
   positions = [],
-  yieldPercent = 0,
   vault,
   isLoading = false,
 }: {
   goal?: Goal
   positions?: EarnPortfolioPosition[]
-  yieldPercent?: number
   vault?: EarnVault
   isLoading?: boolean
 }) {
@@ -121,40 +119,35 @@ export default function GoalDetailsPanel({
   const outerCircumference = 2 * Math.PI * outerRadius
   const innerCircumference = 2 * Math.PI * innerRadius
 
-  const normalizedGoalProtocol = normalize(goal?.selectedProtocol)
-  const normalizedVaultName = normalize(goal?.selectedVaultName)
-  const matchingPositions = positions.filter((position) => {
-    const normalizedProtocol = normalize(position.protocolName)
-    const normalizedAssetName = normalize(position.asset.name)
-    const normalizedAssetSymbol = normalize(position.asset.symbol)
+  // const normalizedGoalProtocol = normalize(goal?.selectedProtocol)
+  // const normalizedVaultName = normalize(goal?.selectedVaultName)
+  // const matchingPositions = positions.filter((position) => {
+  //   const normalizedProtocol = normalize(position.protocolName)
+  //   const normalizedAssetName = normalize(position.asset.name)
+  //   const normalizedAssetSymbol = normalize(position.asset.symbol)
 
-    const protocolMatches = normalizedGoalProtocol
-      ? normalizedProtocol === normalizedGoalProtocol
-      : false
-    const assetMatches = normalizedVaultName
-      ? normalizedAssetName === normalizedVaultName ||
-        normalizedAssetSymbol === normalizedVaultName ||
-        normalizedAssetName?.includes(normalizedVaultName) ||
-        normalizedVaultName.includes(normalizedAssetName ?? '')
-      : false
+  //   const protocolMatches = normalizedGoalProtocol
+  //     ? normalizedProtocol === normalizedGoalProtocol
+  //     : false
+  //   const assetMatches = normalizedVaultName
+  //     ? normalizedAssetName === normalizedVaultName ||
+  //       normalizedAssetSymbol === normalizedVaultName ||
+  //       normalizedAssetName?.includes(normalizedVaultName) ||
+  //       normalizedVaultName.includes(normalizedAssetName ?? '')
+  //     : false
 
-    return protocolMatches || assetMatches
-  })
+  //   return protocolMatches || assetMatches
+  // })
 
-  const displayedPositions =
-    matchingPositions.length > 0 ? matchingPositions : positions
-  const totalPositionUsd = displayedPositions.reduce(
-    (total, position) => total + Number(position.balanceUsd || 0),
-    0,
-  )
+  // const displayedPositions =
+  //   matchingPositions.length > 0 ? matchingPositions : positions
+  // const totalPositionUsd = displayedPositions.reduce(
+  //   (total, position) => total + Number(position.balanceUsd || 0),
+  //   0,
+  // )
   const depositsProgressPercent =
     targetAmount > 0 ? Math.min((currentAmount / targetAmount) * 100, 100) : 0
-  const trackedValue = Math.max(totalPositionUsd, currentAmount)
-  const trackedProgressPercent =
-    targetAmount > 0 ? Math.min((trackedValue / targetAmount) * 100, 100) : 0
-  const trackedStroke = (trackedProgressPercent / 100) * outerCircumference
   const depositsStroke = (depositsProgressPercent / 100) * innerCircumference
-  const remainingToTarget = Math.max(targetAmount - totalPositionUsd, 0)
   const hasSelectedVault = Boolean(vault)
   const depositAmountNumber = Number(depositAmount) || 0
   const selectedVaultTokenSymbol =
@@ -168,9 +161,9 @@ export default function GoalDetailsPanel({
   )
   const destinationChainLabel = selectedVaultNetwork?.label ?? vault?.network ?? 'the destination chain'
   const projectedPrincipal = currentAmount
-  const sevenDayApyPercent = vault?.analytics.apy7d ?? yieldPercent
-  const oneMonthApyPercent = vault?.analytics.apy30d ?? yieldPercent
-  const oneYearApyPercent = vault?.analytics.apy.total ?? yieldPercent
+  const sevenDayApyPercent = vault?.analytics.apy7d ?? 0
+  const oneMonthApyPercent = vault?.analytics.apy30d ?? 0
+  const oneYearApyPercent = vault?.analytics.apy.total ?? 0
   const projectedSevenDayYield = calculateProjectedYield(
     projectedPrincipal,
     sevenDayApyPercent,
@@ -187,7 +180,13 @@ export default function GoalDetailsPanel({
     365,
   )
 
-  const projectedValueOneYear = projectedOneYearYield
+  const projectedValueOneYear = currentAmount + projectedOneYearYield
+  const trackedValue = Math.max(projectedValueOneYear, currentAmount)
+  const trackedProgressPercent =
+    targetAmount > 0 ? Math.min((trackedValue / targetAmount) * 100, 100) : 0
+  const trackedStroke = (trackedProgressPercent / 100) * outerCircumference
+
+  const remainingToTarget = Math.max(targetAmount - projectedValueOneYear, 0)
 
   const getTokenBalanceForChain = (targetChainId: number) => {
     if (selectedVaultTokenSymbol === 'ETH') {
@@ -461,10 +460,10 @@ export default function GoalDetailsPanel({
               />
               <StatCard
                 label="Yield"
-                value={`${yieldPercent.toFixed(2)}% APY`}
+                value={`${vault?.analytics.apy.total.toFixed(2)}% APY`}
               />
               <StatCard
-                label="Projected value(1year)"
+                label="Projected amount(1year)"
                 value={formatUsd(projectedValueOneYear)}
               />
             </div>

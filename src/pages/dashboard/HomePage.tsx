@@ -5,7 +5,6 @@ import {
   earnPortfolioPositionsQueryOptions,
   earnVaultsQueryOptions,
 } from '#/integrations/lifi/earn'
-import Navbar from '#/components/Navbar'
 import type { EarnPortfolioPosition, EarnVault, Goal } from '#/types'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
@@ -131,7 +130,6 @@ const HomePage = () => {
       matchingPositionChainIds.has(vault.chainId),
     ) ??
     fallbackVaultMatches[0]
-  const activeGoalYieldPercent = activeGoalVault?.analytics.apy.total ?? 0
 
   return (
     <div className="h-[calc(100vh-var(--navbar-height))] w-screen px-6 lg:px-8">
@@ -245,7 +243,6 @@ const HomePage = () => {
         <GoalDetailsPanel
           goal={isGoalsLoading ? undefined : activeGoal}
           positions={portfolioPositions}
-          yieldPercent={activeGoalYieldPercent}
           vault={activeGoalVault}
           isLoading={isGoalsLoading}
         />

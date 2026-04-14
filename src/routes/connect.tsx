@@ -20,10 +20,10 @@ function ConnectWallet() {
   return (
     <main className="relative h-screen px-6 py-10 text-slate-950">
       <div className="relative mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-6xl items-center justify-center">
-        <div className="grid w-full gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-          <section className="max-w-2xl">
+        <div className="grid w-full gap-8 lg:grid-cols-[1.1fr_0.9fr] items-center justify-center">
+          <section className="max-w-2xl hidden lg:block">
             <SectionBadge text='Secure wallet sign-in for your goal vault' badge={<ShieldCheck className="size-4" />}/>
-            <h1 className="max-w-xl text-4xl font-semibold leading-tight sm:text-5xl lg:text-6xl">
+            <h1 className="max-w-xl text-4xl font-semibold leading-tight sm:text-5xl xl:text-6xl">
               Connect your wallet and start tracking your next big move.
             </h1>
 
@@ -49,7 +49,7 @@ function ConnectWallet() {
             </div>
           </section>
 
-          <section className="rounded-4xl border border-white/70 bg-white/80 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.12)] backdrop-blur sm:p-8">
+          <section className="rounded-4xl w-full max-w-md border border-white/70 bg-white/80 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.12)] backdrop-blur sm:p-8">
             <div className="rounded-3xl p-6 sm:p-8">
               <div className="mb-8 flex items-center justify-between">
                 <div>
