@@ -48,7 +48,7 @@ async function fetchEarnVaultsByChainAndAsset({
     limit: '5',
   })
 
-  const response = await fetch(`https://earn.li.fi/v1/earn/vaults?${params}`, {
+  const response = await fetch(`https://earn.li.fi/v1/vaults?${params}`, {
     headers: {
       'x-lifi-api-key': apiKey,
     },
@@ -137,7 +137,7 @@ export const getEarnPortfolioPositions = createServerFn({
     }
 
     const response = await fetch(
-      `https://earn.li.fi/v1/earn/portfolio/${data.walletAddress}/positions`,
+      `https://earn.li.fi/v1/portfolio/${data.walletAddress}/positions`,
       {
         headers: {
           'x-lifi-api-key': apiKey,
